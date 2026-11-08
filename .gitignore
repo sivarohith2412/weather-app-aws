@@ -1,0 +1,10 @@
+**/target/
+**/node_modules/
+.env
+.env.*
+!.env.example
+.idea/
+*.log
+work/
+cdk.out/
+outputs/*.zip

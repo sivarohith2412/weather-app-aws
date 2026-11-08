@@ -1,0 +1,43 @@
+name: Deploy development
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: weather-dev-deployment
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: '21'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.18.0'
+          cache: npm
+      - run: mvn -B package
+      - run: npm ci
+      - run: mvn -B -f infrastructure/pom.xml verify
+      - run: npm run synth
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-2
+          allowed-account-ids: '471084227270'
+      - run: npm run diff
+      - run: npm run deploy:dev -- --outputs-file deployment-outputs.json
+      - name: Verify deployed worker is active
+        run: |
+          aws lambda wait function-active-v2 --function-name weather-worker-dev
+          aws lambda get-function-configuration --function-name weather-worker-dev --query '{State:State,Update:LastUpdateStatus,Runtime:Runtime,Handler:Handler}'

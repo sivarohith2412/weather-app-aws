@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SaveWeatherReadings",
+      "Effect": "Allow",
+      "Action": "dynamodb:PutItem",
+      "Resource": "arn:aws:dynamodb:us-east-2:471084227270:table/weather-readings-dev"
+    },
+    {
+      "Sid": "ReadWeatherApiKey",
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "arn:aws:secretsmanager:us-east-2:471084227270:secret:weather/dev/openweather-P4uYlV"
+    },
+    {
+      "Sid": "WriteCollectorLogs",
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+      "Resource": "arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-collector-dev:*"
+    }
+  ]
+}

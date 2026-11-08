@@ -1,0 +1,10 @@
+{
+  "name": "weather-project-tooling",
+  "private": true,
+  "scripts": {
+    "synth": "cdk synth WeatherDev --strict",
+    "diff": "cdk diff WeatherDev",
+    "deploy:dev": "cdk deploy WeatherDev --require-approval never"
+  },
+  "devDependencies": { "aws-cdk": "2.1148.0" }
+}

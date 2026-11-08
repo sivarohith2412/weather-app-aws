@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+  <Appenders><Console name="Json" target="SYSTEM_OUT"><JsonTemplateLayout eventTemplateUri="classpath:LambdaJsonLayout.json"/></Console></Appenders>
+  <Loggers>
+    <!-- Never enable SDK/HTTP wire logging: provider URLs contain credentials. -->
+    <Logger name="software.amazon.awssdk" level="OFF"/>
+    <Logger name="org.apache.http" level="OFF"/>
+    <Logger name="dev.weather" level="${env:POWERTOOLS_LOG_LEVEL:-INFO}" additivity="false"><AppenderRef ref="Json"/></Logger>
+    <Root level="WARN"><AppenderRef ref="Json"/></Root>
+  </Loggers>
+</Configuration>
