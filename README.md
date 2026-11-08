@@ -2,7 +2,31 @@
 
 Java 21 weather client with optional AWS DynamoDB persistence, direct Lambda and
 SQS worker handlers, Java CDK infrastructure, and GitHub Actions workflows.
-Scheduling, five-city collection, read API, and Angular dashboard are planned.
+EventBridge Scheduler starts five-city collection every five minutes. The read API
+and Angular dashboard are planned.
+
+## Scheduled collection
+
+`src/main/resources/cities.json` configures Boston, London, Mumbai, Tokyo and Sydney.
+Both the dispatcher and worker use this allowlist. Edit and review the file to change
+tracked cities; at most ten cities fit the current single-batch dispatcher.
+
+Scheduler invokes `weather-dispatcher-dev`, which sends one job per city to the
+existing collection queue. Workers process at most two city jobs concurrently.
+The run's scheduled timestamp determines its collection ID, so retries are correlated.
+Individual SQS batch-send failures fail dispatch even when the HTTP response succeeds.
+Queue delivery remains at-least-once; existing city/observation items remain unchanged.
+
+The worker DLQ holds repeatedly failing city jobs. `weather-dispatch-dlq-dev` captures
+Scheduler delivery failures and exhausted Lambda asynchronous dispatcher failures.
+The two failure sources have different retry mechanisms. Dispatcher retries can resend
+some city jobs; duplicate observation writes are safe but extra provider calls can occur.
+
+To pause collection, open GitHub Actions > Deploy development > Run workflow on `main`
+and choose `schedule_state: DISABLED`. Use ENABLED to resume. Existing readings remain.
+Push-triggered deployments preserve the current CloudFormation schedule parameter.
+The rate schedule is not aligned to wall-clock five-minute boundaries; delivery can
+occur within its scheduled minute. Collected history starts when this app runs.
 
 ## Infrastructure and automated delivery
 

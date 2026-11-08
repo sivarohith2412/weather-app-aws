@@ -2,64 +2,239 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid":"ReadBootstrapVersion",
-      "Effect":"Allow","Action":["ssm:GetParameter","ssm:GetParameters"],
-      "Resource":"arn:aws:ssm:us-east-2:471084227270:parameter/cdk-bootstrap/hnb659fds/version"
+      "Sid": "ReadBootstrapVersion",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters"
+      ],
+      "Resource": "arn:aws:ssm:us-east-2:471084227270:parameter/cdk-bootstrap/hnb659fds/version"
     },
     {
-      "Sid":"ManageWorkerFunction",
-      "Effect":"Allow",
-      "Action":["lambda:CreateFunction","lambda:DeleteFunction","lambda:GetFunction","lambda:GetFunctionConfiguration","lambda:UpdateFunctionCode","lambda:UpdateFunctionConfiguration","lambda:TagResource","lambda:UntagResource","lambda:ListTags","lambda:GetRuntimeManagementConfig","lambda:PutRuntimeManagementConfig"],
-      "Resource":["arn:aws:lambda:us-east-2:471084227270:function:weather-worker-dev","arn:aws:lambda:us-east-2:471084227270:function:weather-worker-dev:*"]
+      "Sid": "ManageWorkerFunction",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:DeleteFunction",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:TagResource",
+        "lambda:UntagResource",
+        "lambda:ListTags",
+        "lambda:GetRuntimeManagementConfig",
+        "lambda:PutRuntimeManagementConfig",
+        "lambda:PutFunctionEventInvokeConfig",
+        "lambda:GetFunctionEventInvokeConfig",
+        "lambda:DeleteFunctionEventInvokeConfig"
+      ],
+      "Resource": [
+        "arn:aws:lambda:us-east-2:471084227270:function:weather-worker-dev",
+        "arn:aws:lambda:us-east-2:471084227270:function:weather-worker-dev:*",
+        "arn:aws:lambda:us-east-2:471084227270:function:weather-dispatcher-dev",
+        "arn:aws:lambda:us-east-2:471084227270:function:weather-dispatcher-dev:*"
+      ]
     },
     {
-      "Sid":"CreateWorkerEventMapping",
-      "Effect":"Allow","Action":"lambda:CreateEventSourceMapping","Resource":"*",
-      "Condition":{"ArnEquals":{"lambda:FunctionArn":"arn:aws:lambda:us-east-2:471084227270:function:weather-worker-dev"},"StringEquals":{"aws:RequestedRegion":"us-east-2"}}
+      "Sid": "CreateWorkerEventMapping",
+      "Effect": "Allow",
+      "Action": "lambda:CreateEventSourceMapping",
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "lambda:FunctionArn": "arn:aws:lambda:us-east-2:471084227270:function:weather-worker-dev"
+        },
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-2"
+        }
+      }
     },
     {
-      "Sid":"ManageEventMappings",
-      "Effect":"Allow",
-      "Action":["lambda:GetEventSourceMapping","lambda:UpdateEventSourceMapping","lambda:DeleteEventSourceMapping","lambda:TagResource","lambda:UntagResource","lambda:ListTags"],
-      "Resource":"arn:aws:lambda:us-east-2:471084227270:event-source-mapping:*"
+      "Sid": "ManageEventMappings",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:GetEventSourceMapping",
+        "lambda:UpdateEventSourceMapping",
+        "lambda:DeleteEventSourceMapping",
+        "lambda:TagResource",
+        "lambda:UntagResource",
+        "lambda:ListTags"
+      ],
+      "Resource": "arn:aws:lambda:us-east-2:471084227270:event-source-mapping:*"
     },
     {
-      "Sid":"CreateBoundedWorkerRole",
-      "Effect":"Allow","Action":["iam:CreateRole","iam:PutRolePermissionsBoundary"],"Resource":"arn:aws:iam::471084227270:role/weather-worker-dev-role",
-      "Condition":{"ArnEquals":{"iam:PermissionsBoundary":"arn:aws:iam::471084227270:policy/weather-worker-dev-boundary"}}
+      "Sid": "CreateBoundedWorkerRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:PutRolePermissionsBoundary"
+      ],
+      "Resource": "arn:aws:iam::471084227270:role/weather-worker-dev-role",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::471084227270:policy/weather-worker-dev-boundary"
+        }
+      }
     },
     {
-      "Sid":"ManageWorkerRole",
-      "Effect":"Allow",
-      "Action":["iam:GetRole","iam:DeleteRole","iam:UpdateAssumeRolePolicy","iam:PutRolePolicy","iam:GetRolePolicy","iam:DeleteRolePolicy","iam:ListRolePolicies","iam:ListAttachedRolePolicies","iam:TagRole","iam:UntagRole"],
-      "Resource":"arn:aws:iam::471084227270:role/weather-worker-dev-role"
+      "Sid": "ManageWorkerRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:DeleteRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:TagRole",
+        "iam:UntagRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::471084227270:role/weather-worker-dev-role",
+        "arn:aws:iam::471084227270:role/weather-dispatcher-dev-role",
+        "arn:aws:iam::471084227270:role/weather-scheduler-dev-role"
+      ]
     },
     {
-      "Sid":"PassWorkerRoleToLambda",
-      "Effect":"Allow","Action":"iam:PassRole","Resource":"arn:aws:iam::471084227270:role/weather-worker-dev-role",
-      "Condition":{"StringEquals":{"iam:PassedToService":"lambda.amazonaws.com"}}
+      "Sid": "PassWorkerRoleToLambda",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::471084227270:role/weather-worker-dev-role",
+        "arn:aws:iam::471084227270:role/weather-dispatcher-dev-role"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "lambda.amazonaws.com"
+        }
+      }
     },
     {
-      "Sid":"ManageWeatherQueues",
-      "Effect":"Allow",
-      "Action":["sqs:CreateQueue","sqs:DeleteQueue","sqs:GetQueueUrl","sqs:GetQueueAttributes","sqs:SetQueueAttributes","sqs:TagQueue","sqs:UntagQueue","sqs:ListQueueTags"],
-      "Resource":["arn:aws:sqs:us-east-2:471084227270:weather-collection-dev","arn:aws:sqs:us-east-2:471084227270:weather-collection-dlq-dev"]
+      "Sid": "ManageWeatherQueues",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:CreateQueue",
+        "sqs:DeleteQueue",
+        "sqs:GetQueueUrl",
+        "sqs:GetQueueAttributes",
+        "sqs:SetQueueAttributes",
+        "sqs:TagQueue",
+        "sqs:UntagQueue",
+        "sqs:ListQueueTags"
+      ],
+      "Resource": [
+        "arn:aws:sqs:us-east-2:471084227270:weather-collection-dev",
+        "arn:aws:sqs:us-east-2:471084227270:weather-collection-dlq-dev",
+        "arn:aws:sqs:us-east-2:471084227270:weather-dispatch-dlq-dev"
+      ]
     },
     {
-      "Sid":"ManageWorkerLogGroup",
-      "Effect":"Allow",
-      "Action":["logs:CreateLogGroup","logs:DeleteLogGroup","logs:PutRetentionPolicy","logs:DeleteRetentionPolicy","logs:TagResource","logs:UntagResource","logs:TagLogGroup","logs:UntagLogGroup","logs:ListTagsLogGroup","logs:ListTagsForResource"],
-      "Resource":["arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-worker-dev","arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-worker-dev:*"]
+      "Sid": "ManageWorkerLogGroup",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DeleteRetentionPolicy",
+        "logs:TagResource",
+        "logs:UntagResource",
+        "logs:TagLogGroup",
+        "logs:UntagLogGroup",
+        "logs:ListTagsLogGroup",
+        "logs:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-worker-dev",
+        "arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-worker-dev:*",
+        "arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-dispatcher-dev",
+        "arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-dispatcher-dev:*"
+      ]
     },
     {
-      "Sid":"DescribeLogGroups",
-      "Effect":"Allow","Action":"logs:DescribeLogGroups","Resource":"*",
-      "Condition":{"StringEquals":{"aws:RequestedRegion":"us-east-2"}}
+      "Sid": "DescribeLogGroups",
+      "Effect": "Allow",
+      "Action": "logs:DescribeLogGroups",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-2"
+        }
+      }
     },
     {
-      "Sid":"ReadLambdaDeploymentAssets",
-      "Effect":"Allow","Action":["s3:GetObject","s3:GetObjectVersion"],
-      "Resource":"arn:aws:s3:::cdk-hnb659fds-assets-471084227270-us-east-2/*"
+      "Sid": "ReadLambdaDeploymentAssets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": "arn:aws:s3:::cdk-hnb659fds-assets-471084227270-us-east-2/*"
+    },
+    {
+      "Action": [
+        "iam:CreateRole",
+        "iam:PutRolePermissionsBoundary"
+      ],
+      "Sid": "CreateBoundeddispatcherRole",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::471084227270:policy/weather-dispatcher-dev-boundary"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::471084227270:role/weather-dispatcher-dev-role"
+    },
+    {
+      "Action": [
+        "iam:CreateRole",
+        "iam:PutRolePermissionsBoundary"
+      ],
+      "Sid": "CreateBoundedschedulerRole",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::471084227270:policy/weather-scheduler-dev-boundary"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::471084227270:role/weather-scheduler-dev-role"
+    },
+    {
+      "Action": "iam:PassRole",
+      "Sid": "PassScheduleRole",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "scheduler.amazonaws.com"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::471084227270:role/weather-scheduler-dev-role"
+    },
+    {
+      "Action": [
+        "scheduler:CreateSchedule",
+        "scheduler:GetSchedule",
+        "scheduler:UpdateSchedule",
+        "scheduler:DeleteSchedule"
+      ],
+      "Sid": "ManageWeatherSchedule",
+      "Effect": "Allow",
+      "Resource": "arn:aws:scheduler:us-east-2:471084227270:schedule/weather-dev/weather-collection-every-five-minutes"
+    },
+    {
+      "Action": [
+        "scheduler:CreateScheduleGroup",
+        "scheduler:GetScheduleGroup",
+        "scheduler:DeleteScheduleGroup",
+        "scheduler:TagResource",
+        "scheduler:UntagResource",
+        "scheduler:ListTagsForResource"
+      ],
+      "Sid": "ManageWeatherScheduleGroup",
+      "Effect": "Allow",
+      "Resource": "arn:aws:scheduler:us-east-2:471084227270:schedule-group/weather-dev"
     }
   ]
 }

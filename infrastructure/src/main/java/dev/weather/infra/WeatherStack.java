@@ -6,6 +6,8 @@ import software.amazon.awscdk.services.dynamodb.Table;
 import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
 import software.amazon.awscdk.services.iam.ManagedPolicy;
+import software.amazon.awscdk.services.scheduler.CfnSchedule;
+import software.amazon.awscdk.services.scheduler.CfnScheduleGroup;
 import software.amazon.awscdk.services.lambda.*;
 import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource;
 import software.amazon.awscdk.services.logs.*;
@@ -49,6 +51,48 @@ public final class WeatherStack extends Stack {
         logs.grantWrite(role);
         worker.addEventSource(SqsEventSource.Builder.create(queue).batchSize(1)
                 .reportBatchItemFailures(true).maxConcurrency(2).build());
+        var dispatchDlq = Queue.Builder.create(this, "DispatchFailures").queueName("weather-dispatch-dlq-dev")
+                .retentionPeriod(Duration.days(14)).encryption(QueueEncryption.SQS_MANAGED)
+                .enforceSsl(true).removalPolicy(RemovalPolicy.RETAIN).build();
+        var dispatchLogs = LogGroup.Builder.create(this, "DispatcherLogs").logGroupName("/aws/lambda/weather-dispatcher-dev")
+                .retention(RetentionDays.TWO_WEEKS).removalPolicy(RemovalPolicy.RETAIN).build();
+        var dispatchRole = Role.Builder.create(this, "DispatcherRole").roleName("weather-dispatcher-dev-role")
+                .assumedBy(new ServicePrincipal("lambda.amazonaws.com"))
+                .permissionsBoundary(ManagedPolicy.fromManagedPolicyArn(this, "DispatcherBoundary",
+                        "arn:aws:iam::471084227270:policy/weather-dispatcher-dev-boundary")).build();
+        var dispatcher = Function.Builder.create(this, "Dispatcher").functionName("weather-dispatcher-dev")
+                .runtime(software.amazon.awscdk.services.lambda.Runtime.JAVA_21).architecture(Architecture.X86_64)
+                .handler("dev.weather.DispatcherHandler::handleRequest").code(Code.fromAsset(artifact))
+                .memorySize(512).timeout(Duration.seconds(30)).role(dispatchRole).logGroup(dispatchLogs)
+                .loggingFormat(LoggingFormat.JSON).deadLetterQueue(dispatchDlq)
+                .retryAttempts(2).maxEventAge(Duration.hours(1))
+                .environment(Map.of("COLLECTION_QUEUE_URL", queue.getQueueUrl(), "ENVIRONMENT", "dev",
+                        "POWERTOOLS_SERVICE_NAME", "weather-dispatcher", "POWERTOOLS_LOG_LEVEL", "INFO")).build();
+        queue.grantSendMessages(dispatcher);
+        dispatchLogs.grantWrite(dispatchRole);
+        var scheduleGroup = CfnScheduleGroup.Builder.create(this, "CollectionSchedules").name("weather-dev").build();
+        var scheduleRole = Role.Builder.create(this, "ScheduleRole").roleName("weather-scheduler-dev-role")
+                .assumedBy(new ServicePrincipal("scheduler.amazonaws.com").withConditions(Map.of(
+                        "StringEquals", Map.of("aws:SourceAccount", getAccount()),
+                        "ArnEquals", Map.of("aws:SourceArn", scheduleGroup.getAttrArn()))))
+                .permissionsBoundary(ManagedPolicy.fromManagedPolicyArn(this, "SchedulerBoundary",
+                        "arn:aws:iam::471084227270:policy/weather-scheduler-dev-boundary")).build();
+        dispatcher.grantInvoke(scheduleRole);
+        dispatchDlq.grant(scheduleRole, "sqs:SendMessage");
+        var state = CfnParameter.Builder.create(this, "CollectionScheduleState").type("String")
+                .allowedValues(java.util.List.of("ENABLED", "DISABLED")).defaultValue("ENABLED")
+                .description("Disable to pause scheduled provider requests without deleting collected data").build();
+        var schedule = CfnSchedule.Builder.create(this, "FiveMinuteCollection").name("weather-collection-every-five-minutes")
+                .groupName(scheduleGroup.getName()).scheduleExpression("rate(5 minutes)").state(state.getValueAsString())
+                .flexibleTimeWindow(CfnSchedule.FlexibleTimeWindowProperty.builder().mode("OFF").build())
+                .target(CfnSchedule.TargetProperty.builder().arn(dispatcher.getFunctionArn()).roleArn(scheduleRole.getRoleArn())
+                        .input("{\"scheduledAt\":\"<aws.scheduler.scheduled-time>\"}")
+                        .deadLetterConfig(CfnSchedule.DeadLetterConfigProperty.builder().arn(dispatchDlq.getQueueArn()).build())
+                        .retryPolicy(CfnSchedule.RetryPolicyProperty.builder().maximumRetryAttempts(2).maximumEventAgeInSeconds(3600).build())
+                        .build()).build();
+        schedule.addDependency(scheduleGroup);
+        // Permission propagation must precede schedule creation, not only role creation.
+        schedule.getNode().addDependency(scheduleRole);
         Tags.of(this).add("Project", "weather");
         Tags.of(this).add("Environment", "dev");
         CfnOutput.Builder.create(this, "QueueUrl").value(queue.getQueueUrl()).build();
@@ -56,5 +100,8 @@ public final class WeatherStack extends Stack {
         CfnOutput.Builder.create(this, "DeadLetterQueueUrl").value(dlq.getQueueUrl()).build();
         CfnOutput.Builder.create(this, "WorkerName").value(worker.getFunctionName()).build();
         CfnOutput.Builder.create(this, "WorkerLogGroup").value(logs.getLogGroupName()).build();
+        CfnOutput.Builder.create(this, "DispatcherName").value(dispatcher.getFunctionName()).build();
+        CfnOutput.Builder.create(this, "ScheduleName").value(schedule.getName()).build();
+        CfnOutput.Builder.create(this, "DispatchFailureQueueUrl").value(dispatchDlq.getQueueUrl()).build();
     }
 }

@@ -14,7 +14,6 @@ import software.amazon.lambda.powertools.logging.PowertoolsLogging;
 
 /** Direct invocation entry point; SQS reuses process() with its own logging scope. */
 public final class CollectorHandler implements RequestHandler<Map<String, Object>, Map<String, String>> {
-    static final City BOSTON = new City("us-boston", "Boston", "US", 42.3601, -71.0589);
     private final Supplier<CollectionService> service;
     public CollectorHandler() { this(() -> Resources.SERVICE); }
     CollectorHandler(Supplier<CollectionService> service) { this.service = service; }
@@ -24,10 +23,10 @@ public final class CollectorHandler implements RequestHandler<Map<String, Object
     }
     Map<String, String> process(Map<String, Object> event) {
             // Only allow the configured city; never use caller-supplied coordinates or credentials.
-            if (event == null || !"us-boston".equals(event.get("cityId"))
+            if (event == null || CityCatalog.find(event.get("cityId")).isEmpty()
                     || !(event.get("schemaVersion") instanceof Number n) || n.doubleValue() != 1) {
                 LoggerFactory.getLogger(CollectorHandler.class).warn("invalid_collection_job");
-                throw new IllegalArgumentException("Expected schemaVersion 1 and configured cityId us-boston");
+                throw new IllegalArgumentException("Expected schemaVersion 1 and a configured cityId");
             }
             Object supplied = event.get("collectionId");
             String collectionId = supplied == null ? "dev-" + UUID.randomUUID() : supplied.toString();
@@ -35,9 +34,10 @@ public final class CollectorHandler implements RequestHandler<Map<String, Object
                 LoggerFactory.getLogger(CollectorHandler.class).warn("invalid_collection_id");
                 throw new IllegalArgumentException("Invalid collectionId format");
             }
+            City city = CityCatalog.find(event.get("cityId")).orElseThrow();
             try {
-                var result = service.get().collect(BOSTON, collectionId);
-                return Map.of("cityId", BOSTON.id(), "collectionId", collectionId,
+                var result = service.get().collect(city, collectionId);
+                return Map.of("cityId", city.id(), "collectionId", collectionId,
                         "outcome", result.outcome(), "observedAt", result.reading().observedAt());
             } catch (CollectionService.CollectionFailure e) { throw e; }
             catch (RuntimeException | ExceptionInInitializerError | NoClassDefFoundError e) {

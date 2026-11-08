@@ -13,8 +13,8 @@ class WeatherStackTest {
         var template = Template.fromStack(stack);
         template.resourceCountIs("AWS::DynamoDB::Table", 0);
         template.resourceCountIs("AWS::SecretsManager::Secret", 0);
-        template.resourceCountIs("AWS::Lambda::Function", 1);
-        template.resourceCountIs("AWS::SQS::Queue", 2);
+        template.resourceCountIs("AWS::Lambda::Function", 2);
+        template.resourceCountIs("AWS::SQS::Queue", 3);
         template.hasResourceProperties("AWS::IAM::Role", Map.of("RoleName", "weather-worker-dev-role",
                 "PermissionsBoundary", "arn:aws:iam::471084227270:policy/weather-worker-dev-boundary"));
         template.hasResourceProperties("AWS::Lambda::Function", Map.of("FunctionName", "weather-worker-dev", "Runtime", "java21",
@@ -25,6 +25,17 @@ class WeatherStackTest {
         template.hasResourceProperties("AWS::Lambda::EventSourceMapping", Map.of("BatchSize", 1,
                 "FunctionResponseTypes", java.util.List.of("ReportBatchItemFailures"), "ScalingConfig", Map.of("MaximumConcurrency", 2)));
         template.hasResourceProperties("AWS::Logs::LogGroup", Map.of("RetentionInDays", 14));
+        template.hasResourceProperties("AWS::Lambda::Function", Map.of("FunctionName", "weather-dispatcher-dev",
+                "Handler", "dev.weather.DispatcherHandler::handleRequest", "Timeout", 30,
+                "DeadLetterConfig", Match.anyValue()));
+        template.hasResourceProperties("AWS::Scheduler::Schedule", Map.of("ScheduleExpression", "rate(5 minutes)",
+                "FlexibleTimeWindow", Map.of("Mode", "OFF"), "Target", Match.objectLike(Map.of(
+                        "RetryPolicy", Map.of("MaximumEventAgeInSeconds", 3600, "MaximumRetryAttempts", 2),
+                        "DeadLetterConfig", Match.anyValue(), "Input", "{\"scheduledAt\":\"<aws.scheduler.scheduled-time>\"}"))));
+        template.hasResourceProperties("AWS::IAM::Role", Map.of("RoleName", "weather-dispatcher-dev-role",
+                "PermissionsBoundary", "arn:aws:iam::471084227270:policy/weather-dispatcher-dev-boundary"));
+        template.hasResourceProperties("AWS::IAM::Role", Map.of("RoleName", "weather-scheduler-dev-role",
+                "PermissionsBoundary", "arn:aws:iam::471084227270:policy/weather-scheduler-dev-boundary"));
         template.hasResourceProperties("AWS::IAM::Policy", Map.of("PolicyDocument", Match.objectLike(Map.of(
                 "Statement", Match.arrayWith(java.util.List.of(Match.objectLike(Map.of(
                         "Effect", "Allow", "Action", Match.arrayWith(java.util.List.of("logs:CreateLogStream", "logs:PutLogEvents"))))))))));
