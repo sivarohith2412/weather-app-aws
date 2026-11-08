@@ -23,6 +23,8 @@ jobs:
       - run: npm ci
       - run: mvn -B -f infrastructure/pom.xml verify
       - run: npm run synth
+      - run: node --check tools/publish-dashboard.mjs
+      - run: node --check tools/website-smoke.mjs
   dashboard:
     runs-on: ubuntu-latest
     steps:

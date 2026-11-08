@@ -14,7 +14,9 @@ The dashboard has five city cards, temperature/humidity/wind details, observatio
 
 `config.json` contains only the public API URL. Never place an OpenWeather key or AWS credentials in this project. The API exposes read-only weather data publicly; CORS is a browser rule, not authentication. Queries are limited to configured cities and a maximum 24-hour history, returning the newest 500 observations and an explicit truncation flag if needed. There is no forecast endpoint.
 
-GitHub Actions checks the frontend on pull requests. Deployment tests the live API, configures and builds Angular, then uploads the `weather-dashboard-dev` artifact. Hosting on S3/CloudFront is a separate next step; the current dashboard runs locally.
+GitHub Actions checks the frontend on pull requests. Deployment tests the live API, configures and builds Angular, uploads files to the private S3 bucket, refreshes CloudFront, and smoke-tests the public website. It also saves the `weather-dashboard-dev` artifact. Open the `WebsiteUrl` stack output to use the hosted dashboard, or run locally using the commands above.
+
+The page and runtime configuration are not cached by CloudFront. Hashed JavaScript/CSS are uploaded first and cached for a year; the page/configuration are uploaded last. Older hashed assets are retained for already-open pages. The bucket blocks public access and allows CloudFront read access only for this distribution through OAC. Direct S3 object requests are denied. HTTPS is enforced and CloudFront adds managed security headers. The API CORS allowlist includes the hosted website origin and the two local development origins.
 
 Source structure:
 - `src/app/app.ts`: screen state, refresh, city/period selection, chart coordinates.
