@@ -54,11 +54,11 @@ jobs:
           else
             npm run deploy:dev -- --outputs-file deployment-outputs.json
           fi
-      - name: Verify deployed worker is active
+      - name: Verify deployed application is active
         run: |
-          aws lambda wait function-active --function-name weather-worker-dev
-          aws lambda wait function-updated --function-name weather-worker-dev
-          aws lambda get-function-configuration --function-name weather-worker-dev --query '{State:State,Update:LastUpdateStatus,Runtime:Runtime,Handler:Handler}'
+          aws lambda wait function-active --function-name weather-app-dev
+          aws lambda wait function-updated --function-name weather-app-dev
+          aws lambda get-function-configuration --function-name weather-app-dev --query '{State:State,Update:LastUpdateStatus,Runtime:Runtime,Handler:Handler}'
       - name: Smoke test the deployed collection flow
         run: node tools/collection-smoke.mjs
       - name: Test the public read API
@@ -78,3 +78,4 @@ jobs:
           name: weather-dashboard-dev
           path: frontend/dist/weather-dashboard/browser/
           retention-days: 7
+

@@ -33,8 +33,8 @@ class WeatherStackTest {
         var template = Template.fromStack(stack);
         template.resourceCountIs("AWS::DynamoDB::Table", 0);
         template.resourceCountIs("AWS::SecretsManager::Secret", 0);
-        template.resourceCountIs("AWS::Lambda::Function", 3);
-        template.resourceCountIs("AWS::SQS::Queue", 3);
+        template.resourceCountIs("AWS::Lambda::Function", 4);
+        template.resourceCountIs("AWS::SQS::Queue", 4);
         template.hasResourceProperties("AWS::IAM::Role", Map.of("RoleName", "weather-worker-dev-role",
                 "PermissionsBoundary", "arn:aws:iam::471084227270:policy/weather-worker-dev-boundary"));
         template.hasResourceProperties("AWS::Lambda::Function", Map.of("FunctionName", "weather-worker-dev", "Runtime", "java21",
@@ -61,4 +61,5 @@ class WeatherStackTest {
                         "Effect", "Allow", "Action", Match.arrayWith(java.util.List.of("logs:CreateLogStream", "logs:PutLogEvents"))))))))));
     }
 }
+
 

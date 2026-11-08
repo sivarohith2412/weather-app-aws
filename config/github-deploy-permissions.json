@@ -2,16 +2,16 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "InvokeDispatcherForSmokeTest",
+      "Sid": "InvokeApplicationForSmokeTest",
       "Effect": "Allow",
       "Action": "lambda:InvokeFunction",
-      "Resource": "arn:aws:lambda:us-east-2:471084227270:function:weather-dispatcher-dev"
+      "Resource": "arn:aws:lambda:us-east-2:471084227270:function:weather-app-dev"
     },
     {
       "Sid": "ReadSmokeTestEvidence",
       "Effect": "Allow",
       "Action": "logs:FilterLogEvents",
-      "Resource": "arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-worker-dev:*"
+      "Resource": "arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-app-dev:*"
     },
     {
       "Sid": "VerifySavedReadings",
@@ -38,8 +38,17 @@
     {
       "Sid": "ReadDeploymentStatus",
       "Effect": "Allow",
-      "Action": ["cloudformation:DescribeStacks", "cloudformation:DescribeStackEvents", "cloudformation:GetTemplate", "cloudformation:DescribeChangeSet"],
-      "Resource": ["arn:aws:cloudformation:us-east-2:471084227270:stack/WeatherDev/*", "arn:aws:cloudformation:us-east-2:471084227270:stack/CDKToolkit/*", "arn:aws:cloudformation:us-east-2:471084227270:changeSet/cdk-deploy-change-set/*"]
+      "Action": [
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:GetTemplate",
+        "cloudformation:DescribeChangeSet"
+      ],
+      "Resource": [
+        "arn:aws:cloudformation:us-east-2:471084227270:stack/WeatherDev/*",
+        "arn:aws:cloudformation:us-east-2:471084227270:stack/CDKToolkit/*",
+        "arn:aws:cloudformation:us-east-2:471084227270:changeSet/cdk-deploy-change-set/*"
+      ]
     },
     {
       "Sid": "ReadBootstrapVersion",
@@ -48,10 +57,10 @@
       "Resource": "arn:aws:ssm:us-east-2:471084227270:parameter/cdk-bootstrap/hnb659fds/version"
     },
     {
-      "Sid": "CheckWorkerDeployment",
+      "Sid": "CheckApplicationDeployment",
       "Effect": "Allow",
       "Action": "lambda:GetFunctionConfiguration",
-      "Resource": "arn:aws:lambda:us-east-2:471084227270:function:weather-worker-dev"
+      "Resource": "arn:aws:lambda:us-east-2:471084227270:function:weather-app-dev"
     }
   ]
 }

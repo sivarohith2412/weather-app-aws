@@ -16,23 +16,23 @@ const cities = JSON.parse(readFileSync('src/main/resources/cities.json', 'utf8')
 const input = 'work/smoke-input.json';
 const output = 'work/smoke-response.json';
 writeFileSync(input, JSON.stringify({ scheduledAt: new Date().toISOString() }));
-console.log('Invoking weather-dispatcher-dev immediately.');
-const invocation = aws('lambda', 'invoke', '--function-name', 'weather-dispatcher-dev', '--payload', `fileb://${input}`, output);
-assert.equal(invocation.FunctionError, undefined, 'Dispatcher invocation failed');
+console.log('Invoking weather-app-dev immediately.');
+const invocation = aws('lambda', 'invoke', '--function-name', 'weather-app-dev', '--cli-read-timeout', '210', '--payload', `fileb://${input}`, output);
+assert.equal(invocation.FunctionError, undefined, 'Application collection invocation failed');
 const dispatched = JSON.parse(readFileSync(output, 'utf8'));
-assert.equal(dispatched.queuedCityCount, cities.length, 'Dispatcher did not queue every configured city');
+assert.equal(dispatched.successfulCityCount, cities.length, 'Application did not complete every configured city');
 assert.match(dispatched.collectionId, /^dev-[0-9TZ:.+-]+$/);
-console.log(`Queued ${cities.length} city jobs; collection ID ${dispatched.collectionId}`);
+console.log(`Collected ${cities.length} cities; collection ID ${dispatched.collectionId}`);
 const deadline = Date.now() + 150_000;
 let completed = new Map();
 while (Date.now() < deadline) {
-  const logs = aws('logs', 'filter-log-events', '--log-group-name', '/aws/lambda/weather-worker-dev',
+  const logs = aws('logs', 'filter-log-events', '--log-group-name', '/aws/lambda/weather-app-dev',
     '--filter-pattern', `{ $.collectionId = "${dispatched.collectionId}" }`);
   const records = (logs.events ?? []).map(event => { try { return JSON.parse(event.message); } catch { return {}; } });
   assert.equal(records.some(event => event.message === 'collection_failed'), false, 'A city collection failed; inspect CloudWatch logs');
   completed = new Map(records.filter(event => event.message === 'collection_completed').map(event => [event.cityId, event]));
   if (cities.every(city => completed.has(city.id))) break;
-  console.log(`Completed ${completed.size}/${cities.length}; waiting for queue processing and log delivery.`);
+  console.log(`Completed ${completed.size}/${cities.length}; waiting for log delivery.`);
   await pause(5000);
 }
 assert.equal(completed.size, cities.length, 'Timed out waiting for all city jobs');
@@ -45,4 +45,5 @@ for (const city of cities) {
   assert.equal(result.Item.observedAt.S, event.observedAt);
   console.log(`Verified ${city.name}: ${event.outcome}, observation ${event.observedAt}`);
 }
-console.log(`SMOKE TEST PASSED: dispatcher → SQS → ${cities.length} city workers → DynamoDB, with correlated CloudWatch logs.`);
+console.log(`SMOKE TEST PASSED: one Lambda → ${cities.length} cities → DynamoDB, with correlated CloudWatch logs.`);
+

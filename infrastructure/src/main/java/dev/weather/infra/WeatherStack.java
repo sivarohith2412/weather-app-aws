@@ -54,6 +54,10 @@ public final class WeatherStack extends Stack {
         var dispatchDlq = Queue.Builder.create(this, "DispatchFailures").queueName("weather-dispatch-dlq-dev")
                 .retentionPeriod(Duration.days(14)).encryption(QueueEncryption.SQS_MANAGED)
                 .enforceSsl(true).removalPolicy(RemovalPolicy.RETAIN).build();
+        var applicationFailures = Queue.Builder.create(this, "ApplicationFailures").queueName("weather-app-dlq-dev")
+                .retentionPeriod(Duration.days(14)).encryption(QueueEncryption.SQS_MANAGED)
+                .enforceSsl(true).removalPolicy(RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE).build();
+        var application = new ApplicationFunction(this, "Application", artifact, table, secret, applicationFailures).function();
         var dispatchLogs = LogGroup.Builder.create(this, "DispatcherLogs").logGroupName("/aws/lambda/weather-dispatcher-dev")
                 .retention(RetentionDays.TWO_WEEKS).removalPolicy(RemovalPolicy.RETAIN).build();
         var dispatchRole = Role.Builder.create(this, "DispatcherRole").roleName("weather-dispatcher-dev-role")
@@ -77,17 +81,17 @@ public final class WeatherStack extends Stack {
                         "ArnEquals", Map.of("aws:SourceArn", scheduleGroup.getAttrArn()))))
                 .permissionsBoundary(ManagedPolicy.fromManagedPolicyArn(this, "SchedulerBoundary",
                         "arn:aws:iam::471084227270:policy/weather-scheduler-dev-boundary")).build();
-        dispatcher.grantInvoke(scheduleRole);
-        dispatchDlq.grant(scheduleRole, "sqs:SendMessage");
+        application.grantInvoke(scheduleRole);
+        applicationFailures.grant(scheduleRole, "sqs:SendMessage");
         var state = CfnParameter.Builder.create(this, "CollectionScheduleState").type("String")
                 .allowedValues(java.util.List.of("ENABLED", "DISABLED")).defaultValue("ENABLED")
                 .description("Disable to pause scheduled provider requests without deleting collected data").build();
         var schedule = CfnSchedule.Builder.create(this, "FiveMinuteCollection").name("weather-collection-every-five-minutes")
                 .groupName(scheduleGroup.getName()).scheduleExpression("rate(5 minutes)").state(state.getValueAsString())
                 .flexibleTimeWindow(CfnSchedule.FlexibleTimeWindowProperty.builder().mode("OFF").build())
-                .target(CfnSchedule.TargetProperty.builder().arn(dispatcher.getFunctionArn()).roleArn(scheduleRole.getRoleArn())
+                .target(CfnSchedule.TargetProperty.builder().arn(application.getFunctionArn()).roleArn(scheduleRole.getRoleArn())
                         .input("{\"scheduledAt\":\"<aws.scheduler.scheduled-time>\"}")
-                        .deadLetterConfig(CfnSchedule.DeadLetterConfigProperty.builder().arn(dispatchDlq.getQueueArn()).build())
+                        .deadLetterConfig(CfnSchedule.DeadLetterConfigProperty.builder().arn(applicationFailures.getQueueArn()).build())
                         .retryPolicy(CfnSchedule.RetryPolicyProperty.builder().maximumRetryAttempts(2).maximumEventAgeInSeconds(3600).build())
                         .build()).build();
         schedule.addDependency(scheduleGroup);
@@ -115,7 +119,7 @@ public final class WeatherStack extends Stack {
                         .allowMethods(java.util.List.of("GET", "OPTIONS")).allowHeaders(java.util.List.of("content-type"))
                         .maxAge(300).build()).build();
         var integration = software.amazon.awscdk.services.apigatewayv2.CfnIntegration.Builder.create(this, "ReadIntegration")
-                .apiId(api.getRef()).integrationType("AWS_PROXY").integrationUri(reader.getFunctionArn())
+                .apiId(api.getRef()).integrationType("AWS_PROXY").integrationUri(application.getFunctionArn())
                 .payloadFormatVersion("2.0").timeoutInMillis(26000).build();
         int index = 0;
         for (String route : java.util.List.of("GET /cities", "GET /weather/latest", "GET /weather/history")) {
@@ -127,10 +131,13 @@ public final class WeatherStack extends Stack {
                 .apiId(api.getRef()).stageName("$default").autoDeploy(true)
                 .defaultRouteSettings(software.amazon.awscdk.services.apigatewayv2.CfnStage.RouteSettingsProperty.builder()
                         .throttlingBurstLimit(10).throttlingRateLimit(5).build()).build();
-        reader.addPermission("ApiInvoke", Permission.builder().principal(new ServicePrincipal("apigateway.amazonaws.com"))
+        application.addPermission("ApiInvoke", Permission.builder().principal(new ServicePrincipal("apigateway.amazonaws.com"))
                 .sourceAccount(getAccount()).sourceArn("arn:aws:execute-api:" + getRegion() + ":" + getAccount()
                         + ":" + api.getRef() + "/*/GET/*").build());
         CfnOutput.Builder.create(this, "ReadApiUrl").value(api.getAttrApiEndpoint()).build();
+        CfnOutput.Builder.create(this, "ApplicationFunctionName").value(application.getFunctionName()).build();
+        CfnOutput.Builder.create(this, "ApplicationLogGroup").value("/aws/lambda/weather-app-dev").build();
+        CfnOutput.Builder.create(this, "ApplicationFailureQueueUrl").value(applicationFailures.getQueueUrl()).build();
         CfnOutput.Builder.create(this, "WebsiteUrl").value(hosting.url()).build();
         CfnOutput.Builder.create(this, "DashboardBucketName").value(hosting.bucketName()).build();
         CfnOutput.Builder.create(this, "DashboardDistributionId").value(hosting.distributionId()).build();
