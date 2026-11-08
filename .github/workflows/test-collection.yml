@@ -1,0 +1,27 @@
+name: Test weather collection
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: weather-manual-test
+  cancel-in-progress: false
+jobs:
+  collect-and-verify:
+    if: github.ref == 'refs/heads/main' && vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.18.0'
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-2
+      - name: Verify AWS account
+        run: test "$(aws sts get-caller-identity --query Account --output text)" = "471084227270"
+      - name: Invoke dispatcher and verify all five city readings
+        run: node tools/collection-smoke.mjs --force

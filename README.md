@@ -30,6 +30,12 @@ occur within its scheduled minute. Collected history starts when this app runs.
 
 ## Infrastructure and automated delivery
 
+In GitHub Actions, choose **Test weather collection > Run workflow > main** for an
+immediate five-city test without redeploying or waiting for the scheduler. It works
+even while the schedule is paused. Each run makes approximately five provider calls
+before retries, checks correlated logs and confirms the exact readings in DynamoDB.
+Deployments run the same smoke test automatically, except when collection is paused.
+
 `infrastructure/` contains Java CDK definitions. `.github/workflows/ci.yml` runs
 checks without AWS credentials. `deploy-dev.yml` repeats the checks and deploys
 from `main` using GitHub OIDC after the one-time administrator setup.
