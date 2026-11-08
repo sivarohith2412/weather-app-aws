@@ -1,0 +1,33 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AssumeProjectBootstrapRoles",
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": [
+        "arn:aws:iam::471084227270:role/cdk-hnb659fds-deploy-role-471084227270-us-east-2",
+        "arn:aws:iam::471084227270:role/cdk-hnb659fds-file-publishing-role-471084227270-us-east-2",
+        "arn:aws:iam::471084227270:role/cdk-hnb659fds-lookup-role-471084227270-us-east-2"
+      ]
+    },
+    {
+      "Sid": "ReadDeploymentStatus",
+      "Effect": "Allow",
+      "Action": ["cloudformation:DescribeStacks", "cloudformation:DescribeStackEvents", "cloudformation:GetTemplate", "cloudformation:DescribeChangeSet"],
+      "Resource": ["arn:aws:cloudformation:us-east-2:471084227270:stack/WeatherDev/*", "arn:aws:cloudformation:us-east-2:471084227270:stack/CDKToolkit/*", "arn:aws:cloudformation:us-east-2:471084227270:changeSet/cdk-deploy-change-set/*"]
+    },
+    {
+      "Sid": "ReadBootstrapVersion",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:us-east-2:471084227270:parameter/cdk-bootstrap/hnb659fds/version"
+    },
+    {
+      "Sid": "CheckWorkerDeployment",
+      "Effect": "Allow",
+      "Action": "lambda:GetFunctionConfiguration",
+      "Resource": "arn:aws:lambda:us-east-2:471084227270:function:weather-worker-dev"
+    }
+  ]
+}

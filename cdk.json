@@ -1,0 +1,8 @@
+{
+  "app": "mvn -q -f infrastructure/pom.xml compile exec:java",
+  "context": {
+    "@aws-cdk/aws-iam:minimizePolicies": true,
+    "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
+    "@aws-cdk/aws-sqs:restrictDefaultEncryption": true
+  }
+}
