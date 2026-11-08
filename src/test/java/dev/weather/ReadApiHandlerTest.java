@@ -28,8 +28,8 @@ class ReadApiHandlerTest {
             calls.incrementAndGet(); return new WeatherReadStore.Page(List.of(), false);
         }, clock);
         var response = api.process(event("GET /weather/latest", Map.of()));
-        assertEquals(200, response.getStatusCode()); assertEquals(5, calls.get());
-        assertEquals(5, new ObjectMapper().readTree(response.getBody()).get("missingCityIds").size());
+        assertEquals(200, response.getStatusCode()); assertEquals(CityCatalog.all().size(), calls.get());
+        assertEquals(CityCatalog.all().size(), new ObjectMapper().readTree(response.getBody()).get("missingCityIds").size());
     }
     @Test void serviceErrorsDoNotLeakInternals() {
         var api = new ReadApiHandler(() -> { throw new IllegalStateException("private connection details"); }, clock);
@@ -41,3 +41,4 @@ class ReadApiHandlerTest {
         assertEquals(reading, DynamoWeatherReader.reading(DynamoWeatherRepository.toItem(reading)));
     }
 }
+

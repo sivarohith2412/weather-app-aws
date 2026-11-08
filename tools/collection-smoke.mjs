@@ -45,4 +45,4 @@ for (const city of cities) {
   assert.equal(result.Item.observedAt.S, event.observedAt);
   console.log(`Verified ${city.name}: ${event.outcome}, observation ${event.observedAt}`);
 }
-console.log('SMOKE TEST PASSED: dispatcher → SQS → five city workers → DynamoDB, with correlated CloudWatch logs.');
+console.log(`SMOKE TEST PASSED: dispatcher → SQS → ${cities.length} city workers → DynamoDB, with correlated CloudWatch logs.`);

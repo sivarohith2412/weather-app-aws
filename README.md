@@ -2,12 +2,12 @@
 
 Java 21 weather client with optional AWS DynamoDB persistence, direct Lambda and
 SQS worker handlers, Java CDK infrastructure, and GitHub Actions workflows.
-EventBridge Scheduler starts five-city collection every five minutes. The read API
-and Angular dashboard are planned.
+EventBridge Scheduler starts six-city collection every five minutes. The read API
+and Angular dashboard display saved readings through the hosted website.
 
 ## Scheduled collection
 
-`src/main/resources/cities.json` configures Boston, London, Mumbai, Tokyo and Sydney.
+`src/main/resources/cities.json` configures Boston, London, Mumbai, Tokyo, Sydney and Charlotte, North Carolina.
 Both the dispatcher and worker use this allowlist. Edit and review the file to change
 tracked cities; at most ten cities fit the current single-batch dispatcher.
 
@@ -31,8 +31,8 @@ occur within its scheduled minute. Collected history starts when this app runs.
 ## Infrastructure and automated delivery
 
 In GitHub Actions, choose **Test weather collection > Run workflow > main** for an
-immediate five-city test without redeploying or waiting for the scheduler. It works
-even while the schedule is paused. Each run makes approximately five provider calls
+immediate six-city test without redeploying or waiting for the scheduler. It works
+even while the schedule is paused. Each run makes approximately six provider calls
 before retries, checks correlated logs and confirms the exact readings in DynamoDB.
 Deployments run the same smoke test automatically, except when collection is paused.
 
@@ -103,3 +103,5 @@ See [frontend/README.md](frontend/README.md) for local setup. The deployed read 
 The CloudFormation execution role also needs the administrator-managed reader deployment policy in config/reader-deployment-policy.json. The reader runtime is capped by config/reader-permissions-boundary.json and can only query weather data and write its own logs.
 
 Website deployment uses the administrator-managed `config/website-deployment-policy.json` on the CloudFormation execution role and `config/website-publish-policy.json` on the GitHub deployment role. The first policy manages the named website bucket and project-tagged distribution; the second can upload files to that bucket and refresh project-tagged CloudFront distributions. No static credentials are needed in GitHub. See [website access notes](config/website-access.md).
+
+

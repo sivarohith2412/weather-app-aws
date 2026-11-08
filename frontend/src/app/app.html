@@ -1,7 +1,7 @@
 <div class="shell">
 <header class="topbar"><a class="brand" href="/" aria-label="Weather Atlas home"><span class="brand-icon">◉</span> weather<span>atlas</span></a><span class="environment">DEVELOPMENT</span><a class="source-link" href="https://github.com/sivarohith2412/weather-app-aws" target="_blank" rel="noopener noreferrer">View project ↗</a></header>
 <main>
-  <section class="heading"><div><div class="eyebrow">A WINDOW TO THE WORLD</div><h1>Five cities. One view.</h1><p>Current conditions and recorded weather, around the globe.</p></div><button class="refresh" (click)="refresh()" [disabled]="loading()"><span aria-hidden="true">↻</span> {{loading() ? 'Refreshing…' : 'Refresh readings'}}</button></section>
+  <section class="heading"><div><div class="eyebrow">A WINDOW TO THE WORLD</div><h1>Your cities. One view.</h1><p>Current conditions and recorded weather, around the globe.</p></div><button class="refresh" (click)="refresh()" [disabled]="loading()"><span aria-hidden="true">↻</span> {{loading() ? 'Refreshing…' : 'Refresh readings'}}</button></section>
   <div class="status-line"><span><i [class.warning]="error() || freshCount() === 0"></i>{{error() ? 'Connection needs attention' : lastChecked() ? freshCount() + ' of ' + cities().length + ' cities observed in the last 30 min' : 'Connecting to weather data…'}}</span><span>Collection every 5 min · Display refreshes every 30 sec</span></div>
   @if (error()) {<div class="notice" role="alert"><strong>Unable to refresh.</strong> {{error()}} @if (lastChecked()) {<span>Showing the last successful readings.</span>}</div>}
   <section class="cities" aria-label="Choose a city">
@@ -43,3 +43,4 @@
   </div>
   <footer><span>WEATHER ATLAS <span class="footer-dot">/</span> Built with Angular & AWS</span><span>@if(lastChecked()) {Last checked {{lastChecked() | date:'HH:mm:ss':'UTC'}} UTC} @else {Waiting for connection}</span></footer>
 </main></div>
+
