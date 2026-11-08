@@ -1,0 +1,45 @@
+<div class="shell">
+<header class="topbar"><a class="brand" href="/" aria-label="Weather Atlas home"><span class="brand-icon">◉</span> weather<span>atlas</span></a><span class="environment">DEVELOPMENT</span><a class="source-link" href="https://github.com/sivarohith2412/weather-app-aws" target="_blank" rel="noopener noreferrer">View project ↗</a></header>
+<main>
+  <section class="heading"><div><div class="eyebrow">A WINDOW TO THE WORLD</div><h1>Five cities. One view.</h1><p>Current conditions and recorded weather, around the globe.</p></div><button class="refresh" (click)="refresh()" [disabled]="loading()"><span aria-hidden="true">↻</span> {{loading() ? 'Refreshing…' : 'Refresh readings'}}</button></section>
+  <div class="status-line"><span><i [class.warning]="error() || freshCount() === 0"></i>{{error() ? 'Connection needs attention' : lastChecked() ? freshCount() + ' of ' + cities().length + ' cities observed in the last 30 min' : 'Connecting to weather data…'}}</span><span>Collection every 5 min · Display refreshes every 30 sec</span></div>
+  @if (error()) {<div class="notice" role="alert"><strong>Unable to refresh.</strong> {{error()}} @if (lastChecked()) {<span>Showing the last successful readings.</span>}</div>}
+  <section class="cities" aria-label="Choose a city">
+    @for (city of cities(); track city.id) {
+      <button class="city-card" [class.active]="selectedId() === city.id" [attr.aria-pressed]="selectedId() === city.id" (click)="select(city.id)">
+        <span class="city-top"><span class="country">{{city.country}}</span><span class="weather-icon" aria-hidden="true">{{reading(city.id) ? icon(reading(city.id)!.conditionCode) : '—'}}</span></span><span class="city-name">{{city.name}}</span>
+        @if (reading(city.id); as r) {<span class="temperature">{{r.temperatureC | number:'1.0-1'}}<small>°C</small></span><span class="condition">{{r.condition}}</span><span class="age" [class.old]="stale(r)">{{stale(r) ? 'Older reading · ' : 'Observed '}}{{age(r)}} min ago</span>}
+        @else {<span class="temperature">—</span><span class="condition">Awaiting first reading</span><span class="age old">No observation saved yet</span>}
+      </button>
+    } @empty {<div class="empty-cities">{{loading() ? 'Loading your cities…' : 'City readings will appear here when the API is connected.'}}</div>}
+  </section>
+  <div class="details-grid">
+    <section class="current panel"><div class="panel-label">IN FOCUS <span>01 / CONDITIONS</span></div><h2>{{selectedCity()?.name || 'Your selected city'}}</h2>
+      @if (selected(); as r) {
+        <div class="focus-weather"><span class="big-icon" aria-hidden="true">{{icon(r.conditionCode)}}</span><div><div class="focus-temp">{{r.temperatureC | number:'1.0-1'}}<small>°C</small></div><div class="focus-condition">{{r.condition}}</div></div></div>
+        <div class="metrics"><div><span>Humidity</span><strong>{{r.humidityPercent}}<small>%</small></strong></div><div><span>Wind speed</span><strong>{{r.windSpeedMps | number:'1.0-1'}}<small>m/s</small></strong></div></div>
+        <dl class="timestamps"><div><dt>Observed</dt><dd>{{r.observedAt | date:'MMM d, HH:mm':'UTC'}} UTC</dd></div><div><dt>Collected</dt><dd>{{r.collectedAt | date:'MMM d, HH:mm':'UTC'}} UTC</dd></div><div><dt>Source</dt><dd>OpenWeather</dd></div></dl>
+        @if (stale(r)) {<p class="stale-note">This observation is over 30 minutes old. The provider may not have published a newer reading.</p>}
+      } @else {<div class="empty-focus">Select a city with a saved reading to explore its conditions.</div>}
+    </section>
+    <section class="history panel" [attr.aria-busy]="historyLoading()"><div class="panel-label">THE BIGGER PICTURE <span>02 / HISTORY</span></div>
+      <div class="history-heading"><div><h2>Temperature over time</h2><p>Recorded observations · °C · UTC</p></div><div class="periods" aria-label="History period">@for (h of [6,12,24]; track h) {<button (click)="setHours(h)" [attr.aria-pressed]="hours() === h" [class.chosen]="hours() === h">{{h}}h</button>}</div></div>
+      @if (historyError()) {<div class="chart-empty" role="alert">{{historyError()}} <button (click)="loadHistory()">Try again</button></div>}
+      @else if (historyLoading() && !history()) {<div class="chart-empty">Loading temperature history…</div>}
+      @else if (points().length === 0) {<div class="chart-empty"><span class="empty-symbol">⌁</span>No recorded observations in this period.<small>New readings will appear as the collector runs.</small></div>}
+      @else {
+        <div class="chart-wrap"><svg viewBox="0 0 780 215" role="img" [attr.aria-label]="'Temperature history for ' + selectedCity()?.name + ', ' + points().length + ' observations'">
+          <defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#269a88" stop-opacity="0.2"/><stop offset="100%" stop-color="#269a88" stop-opacity="0"/></linearGradient></defs>
+          @for (fraction of [0,0.5,1]; track fraction) {<line x1="36" x2="744" [attr.y1]="30 + fraction * 150" [attr.y2]="30 + fraction * 150" class="gridline"/><text x="0" [attr.y]="35 + fraction * 150">{{range().max - fraction * (range().max-range().min) | number:'1.0-1'}}°</text>}
+          @if (points().length > 1) {<polygon [attr.points]="x(points()[0].observedAt) + ',180 ' + chartPoints() + ' ' + x(points()[points().length-1].observedAt) + ',180'" fill="url(#fill)"/><polyline [attr.points]="chartPoints()" fill="none" stroke="#238f7f" stroke-width="2.5" stroke-linejoin="round"/>}
+          @for (r of points(); track r.observedAt) {<circle [attr.cx]="x(r.observedAt)" [attr.cy]="y(r.temperatureC)" r="3" fill="#238f7f"><title>{{r.observedAt | date:'HH:mm':'UTC'}} UTC · {{r.temperatureC}}°C</title></circle>}
+          <text x="36" y="207">{{history()!.from | date:'HH:mm':'UTC'}}</text><text x="744" y="207" text-anchor="end">{{history()!.to | date:'HH:mm':'UTC'}}</text>
+        </svg></div>
+        <div class="chart-footer"><span>{{points().length}} observations @if (history()?.truncated) { · Latest 500 shown }</span><button (click)="showTable.set(!showTable())">{{showTable() ? 'Hide' : 'View'}} data table {{showTable() ? '−' : '+'}}</button></div>
+        @if (showTable()) {<div class="table-scroll"><table><caption>Temperature observations in UTC</caption><thead><tr><th scope="col">Observed</th><th scope="col">Temperature</th><th scope="col">Condition</th></tr></thead><tbody>@for (r of points(); track r.observedAt) {<tr><td>{{r.observedAt | date:'MMM d, HH:mm':'UTC'}}</td><td>{{r.temperatureC | number:'1.0-1'}} °C</td><td>{{r.condition}}</td></tr>}</tbody></table></div>}
+      }
+      <p class="history-note">Observations come from the provider, so timestamps and intervals may vary. Repeated observations are saved once.</p>
+    </section>
+  </div>
+  <footer><span>WEATHER ATLAS <span class="footer-dot">/</span> Built with Angular & AWS</span><span>@if(lastChecked()) {Last checked {{lastChecked() | date:'HH:mm:ss':'UTC'}} UTC} @else {Waiting for connection}</span></footer>
+</main></div>

@@ -8,3 +8,7 @@
 work/
 cdk.out/
 outputs/*.zip
+
+frontend/dist/
+frontend/.angular/
+deployment-outputs.json
