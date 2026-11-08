@@ -59,3 +59,5 @@ jobs:
           aws lambda wait function-active --function-name weather-worker-dev
           aws lambda wait function-updated --function-name weather-worker-dev
           aws lambda get-function-configuration --function-name weather-worker-dev --query '{State:State,Update:LastUpdateStatus,Runtime:Runtime,Handler:Handler}'
+      - name: Smoke test the deployed collection flow
+        run: node tools/collection-smoke.mjs
