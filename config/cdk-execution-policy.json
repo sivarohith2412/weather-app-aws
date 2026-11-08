@@ -2,6 +2,11 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid":"ReadBootstrapVersion",
+      "Effect":"Allow","Action":["ssm:GetParameter","ssm:GetParameters"],
+      "Resource":"arn:aws:ssm:us-east-2:471084227270:parameter/cdk-bootstrap/hnb659fds/version"
+    },
+    {
       "Sid":"ManageWorkerFunction",
       "Effect":"Allow",
       "Action":["lambda:CreateFunction","lambda:DeleteFunction","lambda:GetFunction","lambda:GetFunctionConfiguration","lambda:UpdateFunctionCode","lambda:UpdateFunctionConfiguration","lambda:TagResource","lambda:UntagResource","lambda:ListTags","lambda:GetRuntimeManagementConfig","lambda:PutRuntimeManagementConfig"],

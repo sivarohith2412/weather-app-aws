@@ -34,7 +34,10 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: us-east-2
-          allowed-account-ids: '471084227270'
+      - name: Verify AWS account
+        run: |
+          account=$(aws sts get-caller-identity --query Account --output text)
+          test "$account" = "471084227270"
       - run: npm run diff
       - run: npm run deploy:dev -- --outputs-file deployment-outputs.json
       - name: Verify deployed worker is active
