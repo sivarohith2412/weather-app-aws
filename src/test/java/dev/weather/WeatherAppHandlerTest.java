@@ -15,7 +15,7 @@ class WeatherAppHandlerTest {
     @Test void collectsEveryConfiguredCityWithOneStableRunIdentity() {
         var calls = new ArrayList<String>();
         var handler = new WeatherAppHandler(() -> new CollectionService((city, key) -> {
-            calls.add(city.id()); return CollectorHandlerTest.READING;
+            calls.add(city.id()); return TestFixtures.READING;
         }, r -> DynamoWeatherRepository.SaveResult.ALREADY_EXISTS, () -> "test-key"), reader());
         var response = (Map<?, ?>) handler.process(Map.of("scheduledAt", "2026-11-08T06:00:00Z"));
         assertEquals(CityCatalog.all().stream().map(City::id).toList(), calls);
@@ -39,7 +39,7 @@ class WeatherAppHandlerTest {
         var calls = new ArrayList<String>();
         var handler = new WeatherAppHandler(() -> new CollectionService((city, key) -> {
             calls.add(city.id()); if (city.id().equals("us-boston")) throw new IllegalStateException("private-provider-detail");
-            return CollectorHandlerTest.READING;
+            return TestFixtures.READING;
         }, r -> DynamoWeatherRepository.SaveResult.SAVED, () -> "test-key"), reader());
         var error = assertThrows(IllegalStateException.class, () -> handler.process(Map.of("scheduledAt", "2026-11-08T06:00:00Z")));
         assertEquals(CityCatalog.all().size(), calls.size());

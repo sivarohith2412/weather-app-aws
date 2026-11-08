@@ -25,11 +25,11 @@ class StructuredLoggingTest {
         var logger = context.getLogger(CollectionService.class.getName());
         logger.addAppender(capture);
         try {
-            var handler = new CollectorHandler(() -> new CollectionService((city,key) -> CollectorHandlerTest.READING,
+            var service = new CollectionService((city,key) -> TestFixtures.READING,
                     r -> { throw new IllegalStateException("private-api-key https://example.test?appid=private-api-key"); },
-                    () -> "private-api-key"));
-            assertThrows(CollectionService.CollectionFailure.class, () -> handler.handleRequest(
-                    Map.of("schemaVersion", 1, "cityId", "us-boston", "collectionId", "dev-logging-test"), CollectorHandlerTest.context()));
+                    () -> "private-api-key");
+            assertThrows(CollectionService.CollectionFailure.class, () -> software.amazon.lambda.powertools.logging.PowertoolsLogging.withLogging(
+                    TestFixtures.context(), () -> service.collect(CityCatalog.find("us-boston").orElseThrow(), "dev-logging-test")));
             assertFalse(lines.isEmpty());
             var mapper = new ObjectMapper();
             boolean failed = false;

@@ -1,7 +1,0 @@
-{
-  "Version":"2012-10-17",
-  "Statement":[
-    {"Effect":"Allow","Action":["sqs:SendMessage","sqs:GetQueueAttributes","sqs:GetQueueUrl"],"Resource":["arn:aws:sqs:us-east-2:471084227270:weather-collection-dev","arn:aws:sqs:us-east-2:471084227270:weather-dispatch-dlq-dev"]},
-    {"Effect":"Allow","Action":["logs:CreateLogStream","logs:PutLogEvents"],"Resource":"arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-dispatcher-dev:*"}
-  ]
-}
