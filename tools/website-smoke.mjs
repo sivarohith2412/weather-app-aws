@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 const outputs = JSON.parse(readFileSync(process.argv[2], 'utf8')).WeatherDev;
 const site = outputs.WebsiteUrl;
+const configuredCities = JSON.parse(readFileSync('src/main/resources/cities.json', 'utf8'));
 assert.match(site, /^https:\/\/[a-z0-9]+\.cloudfront\.net$/);
 assert.equal(outputs.DashboardBucketName, 'weather-dashboard-dev-471084227270-us-east-2');
 const get = (url, options = {}) => fetch(url, { signal: AbortSignal.timeout(40000), ...options });
@@ -31,7 +32,7 @@ const latest = await get(outputs.ReadApiUrl + '/weather/latest', { headers: { Or
 assert.equal(latest.status, 200);
 assert.equal(latest.headers.get('access-control-allow-origin'), site, 'Hosted origin must have API CORS access');
 const data = await latest.json();
-assert.equal(data.readings.length + data.missingCityIds.length, 5);
+assert.deepEqual(new Set([...data.readings.map(r => r.cityId), ...data.missingCityIds]), new Set(configuredCities.map(c => c.id)));
 const privateFile = await get(`https://${outputs.DashboardBucketName}.s3.us-east-2.amazonaws.com/index.html`);
 assert.equal(privateFile.status, 403, 'S3 files must remain private');
 console.log(`WEBSITE SMOKE TEST PASSED: HTTPS page, Angular assets, fresh config, security headers, live API CORS, and private S3 origin. ${site}`);

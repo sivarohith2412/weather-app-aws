@@ -18,8 +18,8 @@ class DispatcherHandlerTest {
         }, "https://sqs.us-east-2.amazonaws.com/471084227270/weather-collection-dev");
         var first = handler.handleRequest(EVENT, CollectorHandlerTest.context());
         var firstBodies = captured.get().entries().stream().map(SendMessageBatchRequestEntry::messageBody).toList();
-        assertEquals(5, first.get("queuedCityCount"));
-        assertEquals(5, new HashSet<>(captured.get().entries().stream().map(SendMessageBatchRequestEntry::id).toList()).size());
+        assertEquals(CityCatalog.all().size(), first.get("queuedCityCount"));
+        assertEquals(CityCatalog.all().size(), new HashSet<>(captured.get().entries().stream().map(SendMessageBatchRequestEntry::id).toList()).size());
         for (var entry : captured.get().entries()) {
             var job = new ObjectMapper().readTree(entry.messageBody());
             assertEquals(1, job.path("schemaVersion").asInt());
@@ -50,3 +50,4 @@ class DispatcherHandlerTest {
         }
     }
 }
+

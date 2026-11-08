@@ -23,5 +23,5 @@ jobs:
           aws-region: us-east-2
       - name: Verify AWS account
         run: test "$(aws sts get-caller-identity --query Account --output text)" = "471084227270"
-      - name: Invoke dispatcher and verify all five city readings
+      - name: Invoke dispatcher and verify all configured city readings
         run: node tools/collection-smoke.mjs --force
