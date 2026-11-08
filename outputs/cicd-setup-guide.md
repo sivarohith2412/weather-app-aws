@@ -51,8 +51,8 @@ the initial setup. This is separate from everyday deployment.
 3. Create role `weather-github-deploy-dev` with the trust policy in
    `config/github-oidc-trust.json` and inline permissions in
    `config/github-deploy-permissions.json`. The trust permits only this repository's
-   `main` branch. If your GitHub account uses customized or immutable OIDC subject
-   claims, match the repository's actual subject format before creating the trust.
+   `main` branch and uses the immutable owner/repository IDs required for repositories
+   created after July 15, 2026. This repository was created in November 2026.
 4. In the GitHub repository, open Settings > Secrets and variables > Actions > Variables.
    Add repository variable `AWS_DEPLOY_ROLE_ARN` with value
    `arn:aws:iam::471084227270:role/weather-github-deploy-dev`.
