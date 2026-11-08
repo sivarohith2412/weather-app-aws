@@ -1,0 +1,24 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListWebsiteFiles",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::weather-dashboard-dev-471084227270-us-east-2"
+    },
+    {
+      "Sid": "UploadWebsiteFiles",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::weather-dashboard-dev-471084227270-us-east-2/*"
+    },
+    {
+      "Sid": "RefreshWeatherWebsiteCache",
+      "Effect": "Allow",
+      "Action": ["cloudfront:CreateInvalidation", "cloudfront:GetInvalidation", "cloudfront:GetDistribution"],
+      "Resource": "arn:aws:cloudfront::471084227270:distribution/*",
+      "Condition": {"StringEquals": {"aws:ResourceTag/Project": "weather"}}
+    }
+  ]
+}

@@ -6,6 +6,26 @@ import software.amazon.awscdk.*;
 import software.amazon.awscdk.assertions.*;
 
 class WeatherStackTest {
+    @Test void servesPrivateWebsiteFilesOnlyThroughSignedCloudFrontRequests() {
+        var app = new App();
+        var stack = new Stack(app, "HostingTest", StackProps.builder()
+                .env(Environment.builder().account(WeatherApp.ACCOUNT).region(WeatherApp.REGION).build()).build());
+        new DashboardHosting(stack, "Dashboard");
+        var template = Template.fromStack(stack);
+        template.hasResourceProperties("AWS::S3::Bucket", Map.of("BucketName", DashboardHosting.BUCKET_NAME,
+                "PublicAccessBlockConfiguration", Map.of("BlockPublicAcls", true, "BlockPublicPolicy", true,
+                        "IgnorePublicAcls", true, "RestrictPublicBuckets", true),
+                "OwnershipControls", Map.of("Rules", java.util.List.of(Map.of("ObjectOwnership", "BucketOwnerEnforced")))));
+        template.hasResourceProperties("AWS::CloudFront::OriginAccessControl", Map.of("OriginAccessControlConfig",
+                Match.objectLike(Map.of("SigningBehavior", "always", "SigningProtocol", "sigv4", "OriginAccessControlOriginType", "s3"))));
+        template.hasResourceProperties("AWS::CloudFront::Distribution", Map.of("DistributionConfig", Match.objectLike(Map.of(
+                "DefaultRootObject", "index.html", "DefaultCacheBehavior", Match.objectLike(Map.of(
+                        "ViewerProtocolPolicy", "redirect-to-https", "CachePolicyId", software.amazon.awscdk.services.cloudfront.CachePolicy.CACHING_DISABLED.getCachePolicyId()))))));
+        template.hasResourceProperties("AWS::S3::BucketPolicy", Map.of("PolicyDocument", Match.objectLike(Map.of(
+                "Statement", Match.arrayWith(java.util.List.of(Match.objectLike(Map.of("Effect", "Allow",
+                        "Action", "s3:GetObject", "Principal", Map.of("Service", "cloudfront.amazonaws.com"),
+                        "Condition", Map.of("StringEquals", Map.of("AWS:SourceArn", Match.anyValue()))))))))));
+    }
     @Test void preservesExistingDataAndCreatesBoundedQueueWorker() {
         var app = new App();
         var stack = new WeatherStack(app, "WeatherDev", StackProps.builder()
@@ -41,3 +61,4 @@ class WeatherStackTest {
                         "Effect", "Allow", "Action", Match.arrayWith(java.util.List.of("logs:CreateLogStream", "logs:PutLogEvents"))))))))));
     }
 }
+

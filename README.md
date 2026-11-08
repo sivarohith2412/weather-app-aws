@@ -98,6 +98,8 @@ identity intentionally lacks broad table-browsing and administrative permissions
 Provider: [OpenWeather](https://openweathermap.org/). Weather data supplied by OpenWeather.
 
 ## Angular dashboard and read API
-See [frontend/README.md](frontend/README.md) for local setup. The deployed read API serves configured cities, latest observations, and bounded history. GitHub Actions tests and builds the dashboard and saves a build artifact. AWS website hosting is the next phase.
+See [frontend/README.md](frontend/README.md) for local setup. The deployed read API serves configured cities, latest observations, and bounded history. GitHub Actions tests, builds, and publishes the dashboard to private S3 behind CloudFront, then smoke-tests the public website. The `WebsiteUrl` stack output is the dashboard address.
 
 The CloudFormation execution role also needs the administrator-managed reader deployment policy in config/reader-deployment-policy.json. The reader runtime is capped by config/reader-permissions-boundary.json and can only query weather data and write its own logs.
+
+Website deployment uses the administrator-managed `config/website-deployment-policy.json` on the CloudFormation execution role and `config/website-publish-policy.json` on the GitHub deployment role. The first policy manages the named website bucket and project-tagged distribution; the second can upload files to that bucket and refresh project-tagged CloudFront distributions. No static credentials are needed in GitHub. See [website access notes](config/website-access.md).

@@ -69,6 +69,10 @@ jobs:
           npm test --prefix frontend -- --watch=false
           node tools/configure-dashboard.mjs deployment-outputs.json
           npm run build --prefix frontend
+      - name: Publish Angular to private S3 and refresh CloudFront
+        run: node tools/publish-dashboard.mjs deployment-outputs.json
+      - name: Smoke test the public website
+        run: node tools/website-smoke.mjs deployment-outputs.json
       - uses: actions/upload-artifact@v4
         with:
           name: weather-dashboard-dev

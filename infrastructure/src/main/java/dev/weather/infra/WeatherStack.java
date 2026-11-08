@@ -107,10 +107,11 @@ public final class WeatherStack extends Stack {
                         "POWERTOOLS_LOG_LEVEL", "INFO")).build();
         table.grant(reader, "dynamodb:Query");
         readLogs.grantWrite(readRole);
+        var hosting = new DashboardHosting(this, "Dashboard");
         var api = software.amazon.awscdk.services.apigatewayv2.CfnApi.Builder.create(this, "ReadApi")
                 .name("weather-read-dev").protocolType("HTTP")
                 .corsConfiguration(software.amazon.awscdk.services.apigatewayv2.CfnApi.CorsProperty.builder()
-                        .allowOrigins(java.util.List.of("http://localhost:4200", "http://127.0.0.1:4200"))
+                        .allowOrigins(java.util.List.of("http://localhost:4200", "http://127.0.0.1:4200", hosting.url()))
                         .allowMethods(java.util.List.of("GET", "OPTIONS")).allowHeaders(java.util.List.of("content-type"))
                         .maxAge(300).build()).build();
         var integration = software.amazon.awscdk.services.apigatewayv2.CfnIntegration.Builder.create(this, "ReadIntegration")
@@ -130,6 +131,9 @@ public final class WeatherStack extends Stack {
                 .sourceAccount(getAccount()).sourceArn("arn:aws:execute-api:" + getRegion() + ":" + getAccount()
                         + ":" + api.getRef() + "/*/GET/*").build());
         CfnOutput.Builder.create(this, "ReadApiUrl").value(api.getAttrApiEndpoint()).build();
+        CfnOutput.Builder.create(this, "WebsiteUrl").value(hosting.url()).build();
+        CfnOutput.Builder.create(this, "DashboardBucketName").value(hosting.bucketName()).build();
+        CfnOutput.Builder.create(this, "DashboardDistributionId").value(hosting.distributionId()).build();
         Tags.of(this).add("Project", "weather");
         Tags.of(this).add("Environment", "dev");
         CfnOutput.Builder.create(this, "QueueUrl").value(queue.getQueueUrl()).build();
