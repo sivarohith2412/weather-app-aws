@@ -93,6 +93,43 @@ public final class WeatherStack extends Stack {
         schedule.addDependency(scheduleGroup);
         // Permission propagation must precede schedule creation, not only role creation.
         schedule.getNode().addDependency(scheduleRole);
+        var readLogs = LogGroup.Builder.create(this, "ReaderLogs").logGroupName("/aws/lambda/weather-reader-dev")
+                .retention(RetentionDays.TWO_WEEKS).removalPolicy(RemovalPolicy.RETAIN).build();
+        var readRole = Role.Builder.create(this, "ReaderRole").roleName("weather-reader-dev-role")
+                .assumedBy(new ServicePrincipal("lambda.amazonaws.com"))
+                .permissionsBoundary(ManagedPolicy.fromManagedPolicyArn(this, "ReaderBoundary",
+                        "arn:aws:iam::471084227270:policy/weather-reader-dev-boundary")).build();
+        var reader = Function.Builder.create(this, "Reader").functionName("weather-reader-dev")
+                .runtime(software.amazon.awscdk.services.lambda.Runtime.JAVA_21).architecture(Architecture.X86_64)
+                .handler("dev.weather.ReadApiHandler::handleRequest").code(Code.fromAsset(artifact))
+                .memorySize(512).timeout(Duration.seconds(25)).role(readRole).logGroup(readLogs).loggingFormat(LoggingFormat.JSON)
+                .environment(Map.of("WEATHER_TABLE_NAME", table.getTableName(), "POWERTOOLS_SERVICE_NAME", "weather-api",
+                        "POWERTOOLS_LOG_LEVEL", "INFO")).build();
+        table.grant(reader, "dynamodb:Query");
+        readLogs.grantWrite(readRole);
+        var api = software.amazon.awscdk.services.apigatewayv2.CfnApi.Builder.create(this, "ReadApi")
+                .name("weather-read-dev").protocolType("HTTP")
+                .corsConfiguration(software.amazon.awscdk.services.apigatewayv2.CfnApi.CorsProperty.builder()
+                        .allowOrigins(java.util.List.of("http://localhost:4200", "http://127.0.0.1:4200"))
+                        .allowMethods(java.util.List.of("GET", "OPTIONS")).allowHeaders(java.util.List.of("content-type"))
+                        .maxAge(300).build()).build();
+        var integration = software.amazon.awscdk.services.apigatewayv2.CfnIntegration.Builder.create(this, "ReadIntegration")
+                .apiId(api.getRef()).integrationType("AWS_PROXY").integrationUri(reader.getFunctionArn())
+                .payloadFormatVersion("2.0").timeoutInMillis(26000).build();
+        int index = 0;
+        for (String route : java.util.List.of("GET /cities", "GET /weather/latest", "GET /weather/history")) {
+            software.amazon.awscdk.services.apigatewayv2.CfnRoute.Builder.create(this, "ReadRoute" + index++)
+                    .apiId(api.getRef()).routeKey(route).authorizationType("NONE")
+                    .target("integrations/" + integration.getRef()).build();
+        }
+        software.amazon.awscdk.services.apigatewayv2.CfnStage.Builder.create(this, "ReadStage")
+                .apiId(api.getRef()).stageName("$default").autoDeploy(true)
+                .defaultRouteSettings(software.amazon.awscdk.services.apigatewayv2.CfnStage.RouteSettingsProperty.builder()
+                        .throttlingBurstLimit(10).throttlingRateLimit(5).build()).build();
+        reader.addPermission("ApiInvoke", Permission.builder().principal(new ServicePrincipal("apigateway.amazonaws.com"))
+                .sourceAccount(getAccount()).sourceArn("arn:aws:execute-api:" + getRegion() + ":" + getAccount()
+                        + ":" + api.getRef() + "/*/GET/*").build());
+        CfnOutput.Builder.create(this, "ReadApiUrl").value(api.getAttrApiEndpoint()).build();
         Tags.of(this).add("Project", "weather");
         Tags.of(this).add("Environment", "dev");
         CfnOutput.Builder.create(this, "QueueUrl").value(queue.getQueueUrl()).build();

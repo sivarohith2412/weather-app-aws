@@ -96,3 +96,8 @@ select `weather-readings-dev`, and choose Explore table items. The development
 identity intentionally lacks broad table-browsing and administrative permissions.
 
 Provider: [OpenWeather](https://openweathermap.org/). Weather data supplied by OpenWeather.
+
+## Angular dashboard and read API
+See [frontend/README.md](frontend/README.md) for local setup. The deployed read API serves configured cities, latest observations, and bounded history. GitHub Actions tests and builds the dashboard and saves a build artifact. AWS website hosting is the next phase.
+
+The CloudFormation execution role also needs the administrator-managed reader deployment policy in config/reader-deployment-policy.json. The reader runtime is capped by config/reader-permissions-boundary.json and can only query weather data and write its own logs.

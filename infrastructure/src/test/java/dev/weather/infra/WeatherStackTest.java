@@ -13,7 +13,7 @@ class WeatherStackTest {
         var template = Template.fromStack(stack);
         template.resourceCountIs("AWS::DynamoDB::Table", 0);
         template.resourceCountIs("AWS::SecretsManager::Secret", 0);
-        template.resourceCountIs("AWS::Lambda::Function", 2);
+        template.resourceCountIs("AWS::Lambda::Function", 3);
         template.resourceCountIs("AWS::SQS::Queue", 3);
         template.hasResourceProperties("AWS::IAM::Role", Map.of("RoleName", "weather-worker-dev-role",
                 "PermissionsBoundary", "arn:aws:iam::471084227270:policy/weather-worker-dev-boundary"));
