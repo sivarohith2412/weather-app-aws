@@ -25,5 +25,8 @@ class WeatherStackTest {
         template.hasResourceProperties("AWS::Lambda::EventSourceMapping", Map.of("BatchSize", 1,
                 "FunctionResponseTypes", java.util.List.of("ReportBatchItemFailures"), "ScalingConfig", Map.of("MaximumConcurrency", 2)));
         template.hasResourceProperties("AWS::Logs::LogGroup", Map.of("RetentionInDays", 14));
+        template.hasResourceProperties("AWS::IAM::Policy", Map.of("PolicyDocument", Match.objectLike(Map.of(
+                "Statement", Match.arrayWith(java.util.List.of(Match.objectLike(Map.of(
+                        "Effect", "Allow", "Action", Match.arrayWith(java.util.List.of("logs:CreateLogStream", "logs:PutLogEvents"))))))))));
     }
 }

@@ -46,6 +46,7 @@ public final class WeatherStack extends Stack {
         // The worker only inserts observations; it does not query, scan, or delete the table.
         table.grant(worker, "dynamodb:PutItem");
         secret.grantRead(worker);
+        logs.grantWrite(role);
         worker.addEventSource(SqsEventSource.Builder.create(queue).batchSize(1)
                 .reportBatchItemFailures(true).maxConcurrency(2).build());
         Tags.of(this).add("Project", "weather");
