@@ -112,6 +112,18 @@
         "arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-reader-dev",
         "arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-reader-dev:*"
       ]
+    },
+    {
+      "Sid": "CloudFormationStageTagging",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:TagResource",
+        "apigateway:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:us-east-2::/apis/*/stages",
+        "arn:aws:apigateway:us-east-2::/apis/*/stages/*"
+      ]
     }
   ]
 }
