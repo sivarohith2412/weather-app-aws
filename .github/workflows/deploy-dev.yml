@@ -42,5 +42,7 @@ jobs:
       - run: npm run deploy:dev -- --outputs-file deployment-outputs.json
       - name: Verify deployed worker is active
         run: |
-          aws lambda wait function-active-v2 --function-name weather-worker-dev
+          aws lambda wait function-active --function-name weather-worker-dev
+          aws lambda wait function-updated --function-name weather-worker-dev
           aws lambda get-function-configuration --function-name weather-worker-dev --query '{State:State,Update:LastUpdateStatus,Runtime:Runtime,Handler:Handler}'
+
