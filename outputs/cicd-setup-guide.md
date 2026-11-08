@@ -47,7 +47,7 @@ the initial setup. This is separate from everyday deployment.
    qualifier `hnb659fds`, termination protection, and the custom execution policy:
 
    ```text
-   npx cdk bootstrap aws://471084227270/us-east-2 --profile weather-setup --cloudformation-execution-policies arn:aws:iam::471084227270:policy/weather-cdk-execution-dev --termination-protection
+   npx cdk bootstrap aws://471084227270/us-east-2 --profile weather-setup --cloudformation-execution-policies arn:aws:iam::471084227270:policy/weather-cdk-execution-dev --termination-protection --no-bootstrap-customer-key
    ```
 
    CDK creates its asset bucket and deployment roles. The execution role can create
@@ -58,7 +58,8 @@ the initial setup. This is separate from everyday deployment.
    If the local CDK CLI cannot read a browser login session, generate the same template
    with `npx cdk bootstrap --show-template --app cdk.out --no-notices` and deploy it
    using AWS CLI CloudFormation with the `CloudFormationExecutionPolicies` parameter
-   set to the custom policy ARN, `CAPABILITY_NAMED_IAM`, region `us-east-2`, and
+   set to the custom policy ARN, `FileAssetsBucketKmsKeyId` set to `AWS_MANAGED_KEY`,
+   `CAPABILITY_NAMED_IAM`, region `us-east-2`, and
    termination protection enabled. Do not accept the template's default execution policy.
 3. In IAM, create (or reuse if already present) the OpenID Connect provider:
    provider URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com`.
@@ -111,10 +112,18 @@ increment the Lambda Errors metric; inspect failedCount logs and DLQ metrics too
 
 ## Validation status
 
-Local tests and synthesis are separate from a real GitHub deployment. The initial
-OIDC trust, bootstrap execution permissions, GitHub variable and successful workflow
-run still need verification in the actual AWS account and repository.
+The `CDKToolkit` bootstrap stack has completed successfully in account `471084227270`,
+region `us-east-2`, with termination protection enabled. Its CloudFormation role is
+attached to `weather-cdk-execution-dev`, not AdministratorAccess. The deployment
+bucket uses the AWS-managed encryption setting. The initially created separate
+customer-managed key was removed from the stack and is pending deletion.
+
+The GitHub OIDC provider, main-branch trust and deployment-role policy were verified
+in AWS. The repository variable was added by the user. Backend tests, infrastructure
+assertions, synthesis and the pull request's GitHub checks passed. A real development
+deployment and SQS integration test still need to run after review and merge.
 
 References: https://docs.aws.amazon.com/cdk/v2/guide/work-with-cdk-java.html,
 https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws,
 https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-configure.html.
+
