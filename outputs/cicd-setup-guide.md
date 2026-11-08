@@ -38,25 +38,39 @@ The current `weather-dev` identity has database-only access. It cannot bootstrap
 CDK, create deployment roles, or deploy this stack. An administrator must perform
 the initial setup. This is separate from everyday deployment.
 
-1. Bootstrap CDK in account `471084227270`, region `us-east-2`, with the standard
-   `hnb659fds` qualifier. CDK creates its asset bucket and deployment roles. Use a
-   reviewed CloudFormation execution policy appropriate for this development account.
-   **The default CDK bootstrap uses AdministratorAccess for the CloudFormation
-   execution role. Restricting the GitHub role to bootstrap roles alone does not
-   restrict that underlying administrative deployment power.** Review the bootstrap
-   execution permissions before enabling automated deployment; do not reuse a broad
-   learning-account role as production access.
-2. In IAM, create (or reuse if already present) the OpenID Connect provider:
+1. Create the administrator-owned managed policies `weather-worker-dev-boundary`
+   from `config/worker-permissions-boundary.json` and `weather-cdk-execution-dev`
+   from `config/cdk-execution-policy.json`. They cap runtime access and scope
+   CloudFormation deployment to the weather worker, queues and logs. Validate
+   policy documents with IAM Access Analyzer before applying them.
+2. Bootstrap CDK in account `471084227270`, region `us-east-2`, with standard
+   qualifier `hnb659fds`, termination protection, and the custom execution policy:
+
+   ```text
+   npx cdk bootstrap aws://471084227270/us-east-2 --profile weather-setup --cloudformation-execution-policies arn:aws:iam::471084227270:policy/weather-cdk-execution-dev --termination-protection
+   ```
+
+   CDK creates its asset bucket and deployment roles. The execution role can create
+   the worker role only with the specified permissions boundary. Its event-source
+   mapping management includes region/account-scoped mapping ARNs because mapping
+   IDs are assigned during creation. Future services require reviewed policy changes.
+   The default bootstrap uses AdministratorAccess, so always pass the custom policy.
+   If the local CDK CLI cannot read a browser login session, generate the same template
+   with `npx cdk bootstrap --show-template --app cdk.out --no-notices` and deploy it
+   using AWS CLI CloudFormation with the `CloudFormationExecutionPolicies` parameter
+   set to the custom policy ARN, `CAPABILITY_NAMED_IAM`, region `us-east-2`, and
+   termination protection enabled. Do not accept the template's default execution policy.
+3. In IAM, create (or reuse if already present) the OpenID Connect provider:
    provider URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com`.
-3. Create role `weather-github-deploy-dev` with the trust policy in
+4. Create role `weather-github-deploy-dev` with the trust policy in
    `config/github-oidc-trust.json` and inline permissions in
    `config/github-deploy-permissions.json`. The trust permits only this repository's
    `main` branch and uses the immutable owner/repository IDs required for repositories
    created after July 15, 2026. This repository was created in November 2026.
-4. In the GitHub repository, open Settings > Secrets and variables > Actions > Variables.
+5. In the GitHub repository, open Settings > Secrets and variables > Actions > Variables.
    Add repository variable `AWS_DEPLOY_ROLE_ARN` with value
    `arn:aws:iam::471084227270:role/weather-github-deploy-dev`.
-5. Review and merge the code. A push to `main` runs the development deployment. A
+6. Review and merge the code. A push to `main` runs the development deployment. A
    deliberate manual workflow run on `main` is also supported.
 
 The deployment job is intentionally skipped until `AWS_DEPLOY_ROLE_ARN` is set.

@@ -5,6 +5,7 @@ import software.amazon.awscdk.*;
 import software.amazon.awscdk.services.dynamodb.Table;
 import software.amazon.awscdk.services.iam.Role;
 import software.amazon.awscdk.services.iam.ServicePrincipal;
+import software.amazon.awscdk.services.iam.ManagedPolicy;
 import software.amazon.awscdk.services.lambda.*;
 import software.amazon.awscdk.services.lambda.eventsources.SqsEventSource;
 import software.amazon.awscdk.services.logs.*;
@@ -31,6 +32,8 @@ public final class WeatherStack extends Stack {
         var logs = LogGroup.Builder.create(this, "WorkerLogs").logGroupName("/aws/lambda/weather-worker-dev")
                 .retention(RetentionDays.TWO_WEEKS).removalPolicy(RemovalPolicy.RETAIN).build();
         var role = Role.Builder.create(this, "WorkerRole").roleName("weather-worker-dev-role")
+                .permissionsBoundary(ManagedPolicy.fromManagedPolicyArn(this, "WorkerBoundary",
+                        "arn:aws:iam::471084227270:policy/weather-worker-dev-boundary"))
                 .assumedBy(new ServicePrincipal("lambda.amazonaws.com")).build();
         var worker = Function.Builder.create(this, "Worker").functionName("weather-worker-dev")
                 .runtime(software.amazon.awscdk.services.lambda.Runtime.JAVA_21).architecture(Architecture.X86_64)
