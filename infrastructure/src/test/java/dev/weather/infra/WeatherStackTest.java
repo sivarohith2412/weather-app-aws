@@ -26,40 +26,25 @@ class WeatherStackTest {
                         "Action", "s3:GetObject", "Principal", Map.of("Service", "cloudfront.amazonaws.com"),
                         "Condition", Map.of("StringEquals", Map.of("AWS:SourceArn", Match.anyValue()))))))))));
     }
-    @Test void preservesExistingDataAndCreatesBoundedQueueWorker() {
+    @Test void preservesDataAndRoutesBothTriggersToExactlyOneFunction() {
         var app = new App();
         var stack = new WeatherStack(app, "WeatherDev", StackProps.builder()
                 .env(Environment.builder().account(WeatherApp.ACCOUNT).region(WeatherApp.REGION).build()).build(), WeatherApp.artifact());
         var template = Template.fromStack(stack);
         template.resourceCountIs("AWS::DynamoDB::Table", 0);
         template.resourceCountIs("AWS::SecretsManager::Secret", 0);
-        template.resourceCountIs("AWS::Lambda::Function", 4);
-        template.resourceCountIs("AWS::SQS::Queue", 4);
-        template.hasResourceProperties("AWS::IAM::Role", Map.of("RoleName", "weather-worker-dev-role",
-                "PermissionsBoundary", "arn:aws:iam::471084227270:policy/weather-worker-dev-boundary"));
-        template.hasResourceProperties("AWS::Lambda::Function", Map.of("FunctionName", "weather-worker-dev", "Runtime", "java21",
-                "Handler", "dev.weather.SqsCollectorHandler::handleRequest", "Timeout", 45, "MemorySize", 512));
-        template.hasResourceProperties("AWS::SQS::Queue", Map.of("QueueName", "weather-collection-dev", "VisibilityTimeout", 270,
-                "SqsManagedSseEnabled", true, "RedrivePolicy", Match.objectLike(Map.of("maxReceiveCount", 5))));
-        template.hasResourceProperties("AWS::SQS::Queue", Map.of("QueueName", "weather-collection-dlq-dev", "MessageRetentionPeriod", 1209600));
-        template.hasResourceProperties("AWS::Lambda::EventSourceMapping", Map.of("BatchSize", 1,
-                "FunctionResponseTypes", java.util.List.of("ReportBatchItemFailures"), "ScalingConfig", Map.of("MaximumConcurrency", 2)));
-        template.hasResourceProperties("AWS::Logs::LogGroup", Map.of("RetentionInDays", 14));
-        template.hasResourceProperties("AWS::Lambda::Function", Map.of("FunctionName", "weather-dispatcher-dev",
-                "Handler", "dev.weather.DispatcherHandler::handleRequest", "Timeout", 30,
-                "DeadLetterConfig", Match.anyValue()));
+        template.resourceCountIs("AWS::Lambda::Function", 1);
+        template.resourceCountIs("AWS::SQS::Queue", 1);
+        template.resourceCountIs("AWS::Lambda::EventSourceMapping", 0);
+        template.hasResourceProperties("AWS::Lambda::Function", Map.of("FunctionName", "weather-app-dev", "Runtime", "java21",
+                "Handler", "dev.weather.WeatherAppHandler::handleRequest", "Timeout", 180, "MemorySize", 512));
+        template.hasResourceProperties("AWS::IAM::Role", Map.of("RoleName", "weather-app-dev-role",
+                "PermissionsBoundary", "arn:aws:iam::471084227270:policy/weather-app-dev-boundary"));
+        var functionId = template.findResources("AWS::Lambda::Function").keySet().iterator().next();
+        var functionArn = Map.of("Fn::GetAtt", java.util.List.of(functionId, "Arn"));
         template.hasResourceProperties("AWS::Scheduler::Schedule", Map.of("ScheduleExpression", "rate(5 minutes)",
-                "FlexibleTimeWindow", Map.of("Mode", "OFF"), "Target", Match.objectLike(Map.of(
-                        "RetryPolicy", Map.of("MaximumEventAgeInSeconds", 3600, "MaximumRetryAttempts", 2),
-                        "DeadLetterConfig", Match.anyValue(), "Input", "{\"scheduledAt\":\"<aws.scheduler.scheduled-time>\"}"))));
-        template.hasResourceProperties("AWS::IAM::Role", Map.of("RoleName", "weather-dispatcher-dev-role",
-                "PermissionsBoundary", "arn:aws:iam::471084227270:policy/weather-dispatcher-dev-boundary"));
-        template.hasResourceProperties("AWS::IAM::Role", Map.of("RoleName", "weather-scheduler-dev-role",
-                "PermissionsBoundary", "arn:aws:iam::471084227270:policy/weather-scheduler-dev-boundary"));
-        template.hasResourceProperties("AWS::IAM::Policy", Map.of("PolicyDocument", Match.objectLike(Map.of(
-                "Statement", Match.arrayWith(java.util.List.of(Match.objectLike(Map.of(
-                        "Effect", "Allow", "Action", Match.arrayWith(java.util.List.of("logs:CreateLogStream", "logs:PutLogEvents"))))))))));
+                "Target", Match.objectLike(Map.of("Arn", functionArn))));
+        template.hasResourceProperties("AWS::ApiGatewayV2::Integration", Map.of("IntegrationUri", functionArn));
+        template.hasResourceProperties("AWS::SQS::Queue", Map.of("QueueName", "weather-app-dlq-dev", "MessageRetentionPeriod", 1209600));
     }
 }
-
-

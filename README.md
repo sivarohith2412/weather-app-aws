@@ -1,107 +1,54 @@
-# Weather project
+# Weather Atlas
 
-Java 21 weather client with optional AWS DynamoDB persistence, direct Lambda and
-SQS worker handlers, Java CDK infrastructure, and GitHub Actions workflows.
-EventBridge Scheduler starts six-city collection every five minutes. The read API
-and Angular dashboard display saved readings through the hosted website.
+A Java 21 and Angular weather application running on AWS with **one application Lambda**, `weather-app-dev`.
 
-## Scheduled collection
+Website: https://d38x2e3vs6ml0b.cloudfront.net
 
-`src/main/resources/cities.json` configures Boston, London, Mumbai, Tokyo, Sydney and Charlotte, North Carolina.
-Both the dispatcher and worker use this allowlist. Edit and review the file to change
-tracked cities; at most ten cities fit the current single-batch dispatcher.
+## Runtime
 
-Scheduler invokes `weather-dispatcher-dev`, which sends one job per city to the
-existing collection queue. Workers process at most two city jobs concurrently.
-The run's scheduled timestamp determines its collection ID, so retries are correlated.
-Individual SQS batch-send failures fail dispatch even when the HTTP response succeeds.
-Queue delivery remains at-least-once; existing city/observation items remain unchanged.
+- EventBridge Scheduler invokes the function every five minutes to collect Boston, London, Mumbai, Tokyo, Sydney, and Charlotte.
+- The function loops through the shared city catalog, loads the provider key from Secrets Manager, and conditionally inserts observations into DynamoDB.
+- API Gateway invokes the same function for public read-only city/latest/history routes. HTTP requests cannot select collection mode through their body or query.
+- Angular is served from private S3 through CloudFront and reads the API. Browser refresh does not fetch new provider weather.
+- `weather-app-dlq-dev` receives exhausted asynchronous collection and scheduler-delivery failures. It is a failure queue, not a city-job queue.
 
-The worker DLQ holds repeatedly failing city jobs. `weather-dispatch-dlq-dev` captures
-Scheduler delivery failures and exhausted Lambda asynchronous dispatcher failures.
-The two failure sources have different retry mechanisms. Dispatcher retries can resend
-some city jobs; duplicate observation writes are safe but extra provider calls can occur.
+The single function has 512 MB memory, Java 21, and a 180-second collection timeout. HTTP queries remain bounded and the API integration timeout is 26 seconds. Collection attempts every city before reporting failures; asynchronous retries repeat the run, with duplicate-safe writes. One function can have concurrent execution environments, so an API request does not wait in a single application process behind collection.
 
-To pause collection, open GitHub Actions > Deploy development > Run workflow on `main`
-and choose `schedule_state: DISABLED`. Use ENABLED to resume. Existing readings remain.
-Push-triggered deployments preserve the current CloudFormation schedule parameter.
-The rate schedule is not aligned to wall-clock five-minute boundaries; delivery can
-occur within its scheduled minute. Collected history starts when this app runs.
+## Code
 
-## Infrastructure and automated delivery
+`WeatherAppHandler` is the deployed Lambda entry point. `ReadApiHandler` is reused as a Java HTTP-route component, not deployed as another function. `CollectionService`, `WeatherClient`, `SecretApiKey`, and `DynamoWeatherRepository` implement collection; `DynamoWeatherReader` implements partition queries. `Main` remains a local Boston development client.
 
-In GitHub Actions, choose **Test weather collection > Run workflow > main** for an
-immediate six-city test without redeploying or waiting for the scheduler. It works
-even while the schedule is paused. Each run makes approximately six provider calls
-before retries, checks correlated logs and confirms the exact readings in DynamoDB.
-Deployments run the same smoke test automatically, except when collection is paused.
+`src/main/resources/cities.json` is the configured allowlist. The application currently supports at most ten cities. The frontend supports six cards and should be reviewed if that count changes.
 
-`infrastructure/` contains Java CDK definitions. `.github/workflows/ci.yml` runs
-checks without AWS credentials. `deploy-dev.yml` repeats the checks and deploys
-from `main` using GitHub OIDC after the one-time administrator setup.
-See [the setup guide](outputs/cicd-setup-guide.md). Existing table/secret resources
-and the manually deployed collector are preserved. The new queue worker is separate.
+## Checks and local development
 
-## IntelliJ setup
+```powershell
+mvn -B clean package
+npm ci
+mvn -B -f infrastructure/pom.xml verify
+npm run synth
+npm ci --prefix frontend
+npm test --prefix frontend -- --watch=false
+npm run build --prefix frontend
+npm start --prefix frontend -- --host 127.0.0.1
+```
 
-Open `pom.xml` as a Maven project, reload Maven dependencies, and select Corretto 21
-as the project SDK. In Run > Edit Configurations > Main, add these environment variables:
+Build the backend before CDK synth because infrastructure uses `target/weather-lambda.zip`. Local Java uses `OPENWEATHER_API_KEY` from the environment and the appropriate `AWS_PROFILE`; Lambda uses Secrets Manager. Angular's `public/config.json` contains only the public API URL. Do not commit credentials.
 
-| Name | Value |
-| --- | --- |
-| OPENWEATHER_API_KEY | Your private OpenWeather Current Weather API key |
-| AWS_PROFILE | weather-dev |
-| AWS_REGION | us-east-2 |
-| WEATHER_TABLE_NAME | weather-readings-dev |
+## Delivery and operations
 
-Keep credentials and run configurations containing keys out of source control.
-AWS credentials come from your existing browser login profile, not Java source code.
-The SDK includes the `signin` module to support that login profile.
+GitHub Actions Checks verifies backend, infrastructure, and Angular. Deploy development runs on main or manually, authenticates through OIDC, deploys Java CDK/CloudFormation, tests real collection and API reads, builds/publishes Angular, refreshes CloudFront, and tests the website.
 
-## Run modes
+Use **Test weather collection > Run workflow > main** to collect and verify immediately. It can run while automatic collection is paused. To pause collection, manually run Deploy development with `schedule_state: DISABLED`; choose ENABLED to resume. Push deployments preserve the current state.
 
-Set **Program arguments** in the IntelliJ Main run configuration:
+The application table is `weather-readings-dev`, keyed by cityId/observedAt, with approximately 30-day observation TTL. Identical observation keys return ALREADY_EXISTS successfully. History is recorded weather, not a forecast, and is limited to 24 hours / 500 returned observations.
 
-- `--check-db`: verify access to the existing table; does not call OpenWeather or write data.
-- No arguments: fetch and print Boston weather without storing it.
-- `--save`: fetch real Boston weather and save it to DynamoDB.
+Current logs: `/aws/lambda/weather-app-dev` in Ohio, retained for 14 days. In Lambda Console choose weather-app-dev > Monitor > View CloudWatch logs. Search by cityId, collectionId, collection_run_failed, or weather_api_completed.
 
-Successful writes print `DynamoDB: SAVED`. Repeated observations print
-`DynamoDB: ALREADY_EXISTS`; the previous item remains unchanged.
-Errors return a nonzero exit status without printing credentials.
+## Infrastructure and access
 
-The table must use string keys `cityId` and `observedAt`, with TTL enabled on `expiresAt`.
-Java writes a numeric expiry 30 days after provider observation time. TTL deletion
-is asynchronous. The repository uses a conditional insert to handle duplicates.
+`WeatherStack.java` owns the application function, Scheduler, API, failure queue, and hosting construct. `ApplicationFunction.java` defines the single function and bounded role. `DashboardHosting.java` defines private encrypted S3 and CloudFront with signed origin access, HTTPS, and managed security headers.
 
-## Tests
+The existing table and provider secret are referenced and preserved. CDK bootstrap resources remain deployment infrastructure. Administrators manage the core deployment policy, application deployment policy, website policies, application boundary, and scheduler boundary under config/. Deployments cannot expand their own boundaries.
 
-Run `mvn test` with Java 21, or run the tests under `src/test/java` in IntelliJ.
-Tests use simulated provider responses and a fake DynamoDB client: no cloud writes
-or weather-provider calls occur during tests.
-
-## Lambda and logging
-
-`mvn package` builds `target/weather-lambda.zip`, with intact dependency JARs under
-`lib/`. The handler is `dev.weather.CollectorHandler::handleRequest` (Java 21).
-See `outputs/lambda-deployment-guide.md` for the deployment and secret setup.
-
-Both local and Lambda collection now use Powertools/Log4j2 JSON logging. The SLF4J
-backend is configured. Set `POWERTOOLS_LOG_LEVEL=DEBUG` for extra diagnostics and
-`POWERTOOLS_SERVICE_NAME=weather-collector` to label local logs. The normal console
-reading JSON and `DynamoDB: ...` summary remain for local runs.
-
-To inspect a saved reading, sign in as an administrator, open DynamoDB in Ohio,
-select `weather-readings-dev`, and choose Explore table items. The development
-identity intentionally lacks broad table-browsing and administrative permissions.
-
-Provider: [OpenWeather](https://openweathermap.org/). Weather data supplied by OpenWeather.
-
-## Angular dashboard and read API
-See [frontend/README.md](frontend/README.md) for local setup. The deployed read API serves configured cities, latest observations, and bounded history. GitHub Actions tests, builds, and publishes the dashboard to private S3 behind CloudFront, then smoke-tests the public website. The `WebsiteUrl` stack output is the dashboard address.
-
-The CloudFormation execution role also needs the administrator-managed reader deployment policy in config/reader-deployment-policy.json. The reader runtime is capped by config/reader-permissions-boundary.json and can only query weather data and write its own logs.
-
-Website deployment uses the administrator-managed `config/website-deployment-policy.json` on the CloudFormation execution role and `config/website-publish-policy.json` on the GitHub deployment role. The first policy manages the named website bucket and project-tagged distribution; the second can upload files to that bucket and refresh project-tagged CloudFront distributions. No static credentials are needed in GitHub. See [website access notes](config/website-access.md).
-
-
+The original multi-function implementation and the staged migration are recorded in Git history and config/single-lambda-migration.md. The old dispatcher, worker, reader, and local-test collector resources are retired after verifying the replacement. See the generated project documentation and cleanup report in the local outputs folder for the detailed development record.

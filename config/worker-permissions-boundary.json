@@ -1,9 +1,0 @@
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {"Effect":"Allow","Action":"dynamodb:PutItem","Resource":"arn:aws:dynamodb:us-east-2:471084227270:table/weather-readings-dev"},
-    {"Effect":"Allow","Action":["secretsmanager:GetSecretValue","secretsmanager:DescribeSecret"],"Resource":"arn:aws:secretsmanager:us-east-2:471084227270:secret:weather/dev/openweather-P4uYlV"},
-    {"Effect":"Allow","Action":["sqs:ReceiveMessage","sqs:DeleteMessage","sqs:ChangeMessageVisibility","sqs:GetQueueAttributes","sqs:GetQueueUrl"],"Resource":"arn:aws:sqs:us-east-2:471084227270:weather-collection-dev"},
-    {"Effect":"Allow","Action":["logs:CreateLogStream","logs:PutLogEvents"],"Resource":"arn:aws:logs:us-east-2:471084227270:log-group:/aws/lambda/weather-worker-dev:*"}
-  ]
-}

@@ -27,3 +27,5 @@ Source structure:
 
 Checks: `npm test --prefix frontend -- --watch=false` and `npm run build --prefix frontend`.
 
+
+The deployed backend now uses one function, weather-app-dev, for both scheduled collection and HTTP reads. ReadApiHandler is a reusable Java route component inside that function. Current logs are /aws/lambda/weather-app-dev.
